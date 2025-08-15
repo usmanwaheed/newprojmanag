@@ -1,0 +1,86 @@
+// Sidebar styles
+.sidebar {
+  background-color: var(--sidebar-background) !important;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  padding: 0 10px;
+
+  .upperRow {
+    .logo {
+      display: flex;
+      justify-content: flex-end;
+      padding: 20px 0;
+
+      img {
+        width: 30px;
+        filter: brightness(var(--logo-brightness));
+      }
+    }
+
+    .list {
+      .title {
+        font-size: 15px;
+        color: var(--text-primary);
+        margin-top: 20px;
+        padding-left: 5px;
+        font-weight: 600;
+      }
+
+      .listItem {
+        box-sizing: border-box;
+        position: relative;
+
+        .listItemBtn {
+          padding: 0.4rem 10px;
+          border-radius: 6px;
+        }
+
+        .listItemIcon {
+          min-width: fit-content !important;
+          margin-right: 13px;
+
+          .icon {
+            width: 16px !important;
+            height: 16px !important;
+            filter: brightness(var(--icon-brightness));
+          }
+        }
+
+        .listItemText {
+          color: var(--text-primary);
+
+          span {
+            font-size: 1.1rem !important;
+          }
+
+          font-weight: bold !important;
+        }
+
+        &:hover {
+          background-color: var(--hover-color) !important;
+          border-radius: 6px;
+
+          .listItemText {
+            color: var(--text-hover) !important;
+            font-weight: bold !important;
+          }
+        }
+
+        &.activeItem {
+          background-color: var(--active-background) !important;
+          border-radius: 6px;
+
+          .listItemText {
+            color: var(--active-text) !important;
+            font-weight: bold !important;
+          }
+        }
+      }
+    }
+  }
+}

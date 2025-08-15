@@ -1,0 +1,33 @@
+.transactions-billing {
+    .MuiCard-root {
+        transition: transform 0.2s ease-in-out;
+
+        &:hover {
+            transform: translateY(-2px);
+        }
+    }
+
+    .MuiTableRow-root {
+        &:hover {
+            background-color: rgba(0, 0, 0, 0.04);
+        }
+    }
+
+    .MuiChip-root {
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    .MuiIconButton-root {
+        transition: all 0.2s ease-in-out;
+
+        &:hover {
+            transform: scale(1.1);
+        }
+    }
+
+    .payment-method-chip {
+        font-size: 0.75rem;
+        height: 20px;
+    }
+}

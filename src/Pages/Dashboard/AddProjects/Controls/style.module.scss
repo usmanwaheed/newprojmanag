@@ -1,0 +1,55 @@
+.tableBodyDark {
+  border-top: 10px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.tableBodyLight {
+  border-top: 10px solid rgb(255, 255, 255) !important;
+}
+
+.lightTableText {
+  color: #36454F !important;
+}
+
+.darkTableText {
+  color: #ffffff !important;
+}
+
+.btnCell {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.4rem !important;
+}
+
+.decline {
+  padding: 0.1rem 0.9rem !important;
+  text-transform: capitalize !important;
+  font-size: 0.8rem !important;
+  border-radius: 0.4rem !important;
+}
+
+.accept {
+  padding: 0.1rem 0.9rem !important;
+  text-transform: capitalize !important;
+  font-size: 0.8rem !important;
+  border-radius: 0.4rem !important;
+}
+
+
+.tableRowHead {
+  &>* {
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    padding: 0.9rem 1.4rem;
+  }
+}
+
+
+.tableRowBody:last-of-type>* {
+  border-bottom: none !important;
+}
+
+.textGreyInfo {
+  font-size: 0.9rem !important;
+  color: #1CAC78 !important;
+}

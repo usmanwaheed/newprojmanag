@@ -1,0 +1,43 @@
+.plan-management {
+    .MuiCard-root {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+        &:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+    }
+
+    .popular-plan {
+        position: relative;
+
+        &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #1976d2, #42a5f5);
+        }
+    }
+
+    .feature-list {
+        .MuiListItem-root {
+            padding-left: 0;
+            padding-right: 0;
+        }
+    }
+
+    .trial-config-card {
+        background: linear-gradient(135deg, rgba(25, 118, 210, 0.1), rgba(66, 165, 245, 0.05));
+    }
+
+    .addon-card {
+        border: 1px solid rgba(0, 0, 0, 0.12);
+
+        &:hover {
+            border-color: #1976d2;
+        }
+    }
+}

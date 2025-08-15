@@ -1,0 +1,162 @@
+// For The Table Theme
+.lightTableText {
+  color: #36454F !important;
+}
+
+.darkTableText {
+  color: #ffffff;
+}
+
+.textGroup {
+  font-size: 0.8rem;
+}
+
+.decline {
+  padding: 0.1rem 0.9rem !important;
+  text-transform: capitalize !important;
+  font-size: 0.8rem !important;
+  border-radius: 0.4rem !important;
+}
+
+.accept {
+  padding: 0.1rem 0.9rem !important;
+  text-transform: capitalize !important;
+  font-size: 0.8rem !important;
+  border-radius: 0.4rem !important;
+}
+
+.tableHeadText {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.textGreyInfo {
+  font-size: 0.9rem;
+  color: #1CAC78;
+}
+
+// MENU ITEM START 
+.anchorElParent {
+  .MuiList-root {
+    padding: 0 !important;
+    margin: 0;
+    border: 1px solid silver;
+    border-radius: 0.2rem;
+    background-color: white;
+  }
+
+  .MuiPaper-root {
+    box-shadow: 0;
+  }
+
+  .MuiMenuItem-root {
+    &.anchorMenuItem {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .deleteMenuItem {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    padding: 0.4rem;
+    margin: 0;
+    background-color: #e97451;
+    color: white !important;
+
+    &:hover {
+      background-color: #ee4b2b !important;
+    }
+  }
+
+  .editMenuItem {
+    text-decoration: none !important;
+  }
+
+  .editMenuItem,
+  .viewMenuItem {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    padding: 0.4rem;
+    margin: 0;
+    padding-right: 2.2rem;
+  }
+}
+
+.boxMain1 {
+  border: 1px solid silver;
+  padding: 1rem 2rem;
+  border-radius: 0.3rem;
+}
+
+.textGreyDesc {
+  color: gray;
+  font-size: 0.8rem;
+}
+
+.tableBodyBtn {
+  padding: 0.1rem 0.4rem !important;
+  text-transform: capitalize !important;
+  text-wrap: nowrap !important;
+  font-size: 0.8rem !important;
+
+  &:hover {
+    background-color: transparent !important;
+  }
+}
+
+.noContent {
+  margin-left: 0.6rem;
+  color: silver;
+  padding: 10px 0;
+}
+
+.anchorMenuItem {
+  padding: 6px 4px;
+  padding-inline-end: 30px;
+  font-size: 12px;
+  color: gray;
+
+  &:hover {
+    background-color: rgba(216, 216, 216, 0.2);
+  }
+}
+
+.anchorMenuItemCompleted {
+  padding: 6px 4px;
+  padding-inline-end: 30px;
+  font-size: 12px;
+  color: white;
+  background-color: #50C878;
+
+
+  &:hover {
+    // background-color: rgba(216, 216, 216, 0.2);
+    background-color: #00A36C;
+  }
+}
+
+.tableRowHead {
+  background-color: rgba(155, 155, 155, 0.1);
+
+  &>th {
+    min-width: fit-content;
+    text-wrap: nowrap;
+  }
+
+  th:first-of-type {
+    border-top-left-radius: 0.4rem;
+    border-bottom-left-radius: 0.4rem;
+  }
+
+  th:last-of-type {
+    border-top-right-radius: 0.4rem;
+    border-bottom-right-radius: 0.4rem;
+  }
+}
+
+.tableRowBody:last-of-type>* {
+  border-bottom: none !important;
+}

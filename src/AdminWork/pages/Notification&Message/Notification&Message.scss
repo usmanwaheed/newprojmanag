@@ -1,0 +1,50 @@
+.notifications-messaging {
+    .MuiCard-root {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+    }
+
+    .template-card {
+        .MuiLinearProgress-root {
+            &.MuiLinearProgress-colorPrimary {
+                background-color: rgba(25, 118, 210, 0.1);
+            }
+
+            &.MuiLinearProgress-colorSecondary {
+                background-color: rgba(123, 31, 162, 0.1);
+            }
+        }
+    }
+
+    .broadcast-table {
+        .MuiTableRow-root {
+            &:hover {
+                background-color: rgba(0, 0, 0, 0.04);
+            }
+        }
+    }
+
+    .stats-card {
+        .MuiCardContent-root {
+            padding: 24px;
+        }
+    }
+
+    .performance-chart {
+        .MuiLinearProgress-root {
+            height: 8px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+    }
+
+    .settings-section {
+        .MuiTextField-root {
+            margin-bottom: 16px;
+        }
+    }
+}

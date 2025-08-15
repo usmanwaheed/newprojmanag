@@ -1,0 +1,39 @@
+.goBack {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  transition: 0.3s ease all;
+
+  .goBackTitle {
+    font-size: 1.2rem;
+    margin-left: -5px;
+    margin-top: 2px;
+  }
+
+  &:hover {
+    opacity: 0.6;
+  }
+}
+
+.Tabs {
+  border-radius: 0.4rem !important;
+  padding: 0.2rem 0.2rem !important;
+  border: 1px solid silver !important;
+  min-height: auto !important;
+}
+
+.Tab {
+  border-radius: 0.4rem !important;
+  padding: 0.6rem 0.6rem !important;
+  min-width: auto !important;
+  min-height: auto !important;
+  text-transform: capitalize !important;
+}
+
+.timeCheckBtn {
+  font-size: 14px !important;
+  border-radius: 0.4rem;
+  text-transform: capitalize;
+  border: 1px solid transparent;
+  background-color: rgba(250, 249, 246, 0.1);
+}

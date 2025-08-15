@@ -1,0 +1,30 @@
+# Logs
+logs
+*.log
+
+node_modules/
+/node_modules
+
+server/node_modules
+electron-app/node_modules
+
+# dotenv environment variable files
+.env
+/.env
+.env/
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+package-lock.json
+/package-lock.json
+package-lock.json/
+
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
