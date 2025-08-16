@@ -1,3 +1,4 @@
+// src/Pages/Dashboard/AddProjects/index.jsx
 import PropTypes from 'prop-types';
 import style from "./style.module.scss"
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
@@ -14,6 +15,7 @@ import Videos from "./Videos"
 import Time from "./Time"
 import Files from "./Files"
 import Controls from "./Controls"
+import ProjectChat from "./Chat" // Import the new Chat component
 import {
     Button, Tab, Tabs,
     IconButton, Stack,
