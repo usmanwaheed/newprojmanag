@@ -43,7 +43,6 @@ import { RouteNames } from "../../../../Constants/route";
 export default function index() {
     const { user, theme, mode } = useAuth();
     const tableClassText = mode === 'light' ? style.lightTableText : style.darkTableText;
-    console.log("data of user", user)
     const { id } = useParams();
     const { data: taskData } = useQuery({
         queryKey: ['tasks', id],

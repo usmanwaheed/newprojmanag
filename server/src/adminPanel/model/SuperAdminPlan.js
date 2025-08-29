@@ -91,7 +91,7 @@ const planSchema = new Schema(
 
 planSchema.index({ isActive: 1 });
 planSchema.index({ name: 1 });
-planSchema.index({ stripePriceId: 1 });
+// planSchema.index({ stripePriceId: 1 });
 
 const SuperAdminPlans = mongoose.model("SuperAdminPlan", planSchema);
 export { SuperAdminPlans };

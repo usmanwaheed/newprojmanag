@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 // server/src/socket/chatSocket.js
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';

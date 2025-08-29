@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+/* eslint-disable react/prop-types */
+import { createContext, useContext, useState } from 'react';
 import io from 'socket.io-client';
 const socket = io();
 

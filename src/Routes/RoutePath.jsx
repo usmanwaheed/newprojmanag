@@ -31,7 +31,6 @@ const StripePayment = lazy(() => import("../Pages/GetSubscription/StripePayment"
 const WhopPayment = lazy(() => import("../Pages/GetSubscription/WhopPayment"));
 const PaymentSuccess = lazy(() => import("../Pages/GetSubscription/PaymentSuccess"));
 const Unauthorized = lazy(() => import("../Pages/GetSubscription/Unauthorized"));
-const ChatPage     = lazy(() => import('../Pages/Dashboard/ChatPage'));
 
 // import SingleVideo from "../Pages/Dashboard/AddVideos/SingleVideo";
 
@@ -118,12 +117,6 @@ export const PublicRoute = [
 export const PrivateRoute = [
     { path: RouteNames.DASHBOARD, element: Dashboard, layout: true, title: 'Departments' },
     { path: RouteNames.MESSAGE, element: Message, layout: true, title: 'Message' },
-    {
-        path: `${RouteNames.PROJECT_CHAT}/:projectId`,
-        element: ChatPage,
-        layout: true,
-        title: 'Project Chat',
-    },
 
     {
         path: RouteNames.TEAMS, element: Teams, layout: true, title: 'Manage'

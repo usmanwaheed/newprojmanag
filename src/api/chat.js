@@ -1,90 +1,86 @@
-import axios from 'axios';
-
-const API_BASE = '/api'; // Adjust according to your backend base URL
+import { axiosInstance } from "./axiosInstance";
 
 // Chat Rooms
 export const createChatRoom = async (data) => {
-  const response = await axios.post(`${API_BASE}/chat/rooms`, data);
-  return response.data;
+  const { data: res } = await axiosInstance.post('/chat/rooms', data);
+  return res;
 };
 
 export const getChatRooms = async (projectId) => {
-  const response = await axios.get(`${API_BASE}/chat/rooms/${projectId}`);
-  return response.data;
+  const { data } = await axiosInstance.get(`/chat/rooms/${projectId}`);
+  return data;
 };
 
 export const updateChatRoom = async (roomId, data) => {
-  const response = await axios.put(`${API_BASE}/chat/rooms/${roomId}`, data);
-  return response.data;
+  const { data: res } = await axiosInstance.put(`/chat/rooms/${roomId}`, data);
+  return res;
 };
 
 export const deleteChatRoom = async (roomId) => {
-  const response = await axios.delete(`${API_BASE}/chat/rooms/${roomId}`);
-  return response.data;
+  const { data } = await axiosInstance.delete(`/chat/rooms/${roomId}`);
+  return data;
 };
 
 export const joinChatRoom = async (roomId) => {
-  const response = await axios.post(`${API_BASE}/chat/rooms/${roomId}/join`);
-  return response.data;
+  const { data } = await axiosInstance.post(`/chat/rooms/${roomId}/join`);
+  return data;
 };
 
 export const leaveChatRoom = async (roomId) => {
-  const response = await axios.post(`${API_BASE}/chat/rooms/${roomId}/leave`);
-  return response.data;
+  const { data } = await axiosInstance.post(`/chat/rooms/${roomId}/leave`);
+  return data;
 };
 
 // Messages
-export const sendMessage = async (roomId, data) => {
-  const response = await axios.post(`${API_BASE}/chat/rooms/${roomId}/messages`, data);
-  return response.data;
+export const sendMessage = async (roomId, body) => {
+  const { data } = await axiosInstance.post(`/chat/rooms/${roomId}/messages`, body);
+  return data;
 };
 
 export const getMessages = async (roomId, page = 1, limit = 50) => {
-  const response = await axios.get(`${API_BASE}/chat/rooms/${roomId}/messages`, {
-    params: { page, limit }
+  const { data } = await axiosInstance.get(`/chat/rooms/${roomId}/messages`, {
+    params: { page, limit },
   });
-  return response.data;
+  return data;
 };
 
 export const deleteMessage = async (messageId) => {
-  const response = await axios.delete(`${API_BASE}/chat/messages/${messageId}`);
-  return response.data;
+  const { data } = await axiosInstance.delete(`/chat/messages/${messageId}`);
+  return data;
 };
 
-export const editMessage = async (messageId, data) => {
-  const response = await axios.put(`${API_BASE}/chat/messages/${messageId}`, data);
-  return response.data;
+export const editMessage = async (messageId, body) => {
+  const { data } = await axiosInstance.put(`/chat/messages/${messageId}`, body);
+  return data;
 };
 
 // File Upload
 export const uploadChatFile = async (file, roomId) => {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('roomId', roomId);
-  
-  const response = await axios.post(`${API_BASE}/chat/upload`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+  formData.append("file", file);
+  formData.append("roomId", roomId);
+
+  const { data } = await axiosInstance.post(`/chat/upload`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
-  return response.data;
+  return data;
 };
 
 // Online Status
 export const updateOnlineStatus = async (status) => {
-  const response = await axios.put(`${API_BASE}/users/status`, { status });
-  return response.data;
+  const { data } = await axiosInstance.put(`/users/status`, { status });
+  return data;
 };
 
 export const getOnlineUsers = async (projectId) => {
-  const response = await axios.get(`${API_BASE}/users/online/${projectId}`);
-  return response.data;
+  const { data } = await axiosInstance.get(`/users/online/${projectId}`);
+  return data;
 };
 
 // Search Messages
 export const searchMessages = async (roomId, query) => {
-  const response = await axios.get(`${API_BASE}/chat/rooms/${roomId}/search`, {
-    params: { q: query }
+  const { data } = await axiosInstance.get(`/chat/rooms/${roomId}/search`, {
+    params: { q: query },
   });
-  return response.data;
+  return data;
 };

@@ -21,7 +21,7 @@ const TimeTrackingSchema = new Schema(
         // Optional: SubTask reference for more granular tracking
         subTaskId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "subUserTask",
+            ref: "project",
             default: null,
         },
         employee: {

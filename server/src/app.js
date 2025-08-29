@@ -51,6 +51,7 @@ import notificationRoute from "./routes/notificationRoute.js";
 import PlanRoute from "./adminPanel/routes/planRoute.js";
 import SuperAdminAuth from "./adminPanel/routes/superAdminAuth.js";
 import Subscription from "./adminPanel/routes/subscriptionRoute.js";
+import chatRoute from "./routes/chat.js";
 // import Subscription from "./models/SuperAdmin/Subscriptions.js";
 
 app.use("/user", userRoute);
@@ -65,6 +66,7 @@ app.use("/notifications", notificationRoute);
 app.use("/admin", SuperAdminAuth);
 app.use("/superadmin/plans", PlanRoute);
 app.use("/superadmin/subscription", Subscription);
+app.use("/chat", chatRoute);
 
 app.get("/", (req, res) => {
     res.status(200).send("Working successfull!");

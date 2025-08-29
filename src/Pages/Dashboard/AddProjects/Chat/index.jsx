@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/Pages/Dashboard/AddProjects/Chat/index.jsx
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -5,7 +6,8 @@ import {
   Avatar, Paper, Chip, Dialog, DialogTitle, DialogContent,
   DialogActions, List, ListItem, ListItemAvatar, ListItemText,
   Badge, Tooltip, Divider, Menu, MenuItem, CircularProgress,
-  Alert, Fab, InputAdornment
+  Alert, Fab, InputAdornment, FormControl, InputLabel, Select,
+  OutlinedInput, Checkbox, ListItemText as MuiListItemText
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -29,6 +31,17 @@ import { toast } from 'react-toastify';
 import { getUserForSubTask } from '../../../../api/userSubTask';
 import PropTypes from 'prop-types';
 
+const ITEM_HEIGHT = 48;
+const ITEM_PADDING_TOP = 8;
+const MenuProps = {
+  PaperProps: {
+    style: {
+      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
+      width: 250,
+    },
+  },
+};
+
 const ProjectChat = ({ projectId }) => {
   const { user, theme, mode } = useAuth();
   const queryClient = useQueryClient();
@@ -39,6 +52,7 @@ const ProjectChat = ({ projectId }) => {
   const [messageText, setMessageText] = useState('');
   const [createRoomDialog, setCreateRoomDialog] = useState(false);
   const [newRoomData, setNewRoomData] = useState({ name: '', description: '', isPrivate: false });
+  const [selectedQcAdmins, setSelectedQcAdmins] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,6 +99,7 @@ const ProjectChat = ({ projectId }) => {
       queryClient.invalidateQueries(['chatRooms', projectId]);
       setCreateRoomDialog(false);
       setNewRoomData({ name: '', description: '', isPrivate: false });
+      setSelectedQcAdmins([]);
       setSelectedRoom(data.data);
       toast.success('Chat room created successfully!');
     },
@@ -123,6 +138,9 @@ const ProjectChat = ({ projectId }) => {
       setSelectedFile(null);
     }
   });
+
+  // Get QC Admins from project users
+  const qcAdmins = projectUsers?.data?.filter(user => user.role === 'QcAdmin') || [];
 
   // Socket event listeners
   useEffect(() => {
@@ -179,6 +197,14 @@ const ProjectChat = ({ projectId }) => {
     }
   }, [selectedRoom, socket, isConnected, joinChatRoom, leaveChatRoom]);
 
+  // Initialize selected QC Admins when dialog opens
+  useEffect(() => {
+    if (createRoomDialog) {
+      // Pre-select all QC Admins by default
+      setSelectedQcAdmins(qcAdmins.map(admin => admin._id));
+    }
+  }, [createRoomDialog, qcAdmins]);
+
   // Handle send message
   const handleSendMessage = (messageData = null) => {
     const messageToSend = messageData || {
@@ -234,6 +260,12 @@ const ProjectChat = ({ projectId }) => {
     uploadFileMutation.mutate({ file, roomId: selectedRoom._id });
   };
 
+  // Handle QC Admin selection change
+  const handleQcAdminChange = (event) => {
+    const value = event.target.value;
+    setSelectedQcAdmins(typeof value === 'string' ? value.split(',') : value);
+  };
+
   // Create new room
   const handleCreateRoom = () => {
     if (!newRoomData.name.trim()) {
@@ -241,20 +273,25 @@ const ProjectChat = ({ projectId }) => {
       return;
     }
 
-    // Ensure at least one QC admin is included
-    const qcAdmins = projectUsers?.data?.filter(user => user.role === 'QcAdmin') || [];
-    if (qcAdmins.length === 0) {
-      toast.error('At least one QC Admin must be available');
+    if (selectedQcAdmins.length === 0) {
+      toast.error('At least one QC Admin must be selected');
       return;
     }
 
     const roomData = {
       ...newRoomData,
       projectId,
-      members: [user._id, ...qcAdmins.map(admin => admin._id)]
+      members: [user._id, ...selectedQcAdmins]
     };
 
     createRoomMutation.mutate(roomData);
+  };
+
+  // Reset dialog state when closing
+  const handleCloseDialog = () => {
+    setCreateRoomDialog(false);
+    setNewRoomData({ name: '', description: '', isPrivate: false });
+    setSelectedQcAdmins([]);
   };
 
   // Get user status
@@ -558,7 +595,7 @@ const ProjectChat = ({ projectId }) => {
       {/* Create Room Dialog */}
       <Dialog
         open={createRoomDialog}
-        onClose={() => setCreateRoomDialog(false)}
+        onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
       >
@@ -581,17 +618,74 @@ const ProjectChat = ({ projectId }) => {
               onChange={(e) => setNewRoomData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Brief description of the room purpose"
             />
-            <Alert severity="info">
-              All QC Admins will be automatically added to ensure proper oversight.
-            </Alert>
+            
+            {/* QC Admin Selection Dropdown */}
+            <FormControl fullWidth>
+              <InputLabel id="qc-admin-select-label">Select QC Admins</InputLabel>
+              <Select
+                labelId="qc-admin-select-label"
+                id="qc-admin-select"
+                multiple
+                value={selectedQcAdmins}
+                onChange={handleQcAdminChange}
+                input={<OutlinedInput label="Select QC Admins" />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => {
+                      const admin = qcAdmins.find(admin => admin._id === value);
+                      return (
+                        <Chip 
+                          key={value} 
+                          label={admin?.name || 'Unknown Admin'} 
+                          size="small"
+                          avatar={<Avatar src={admin?.avatar} sx={{ width: 24, height: 24 }} />}
+                        />
+                      );
+                    })}
+                  </Box>
+                )}
+                MenuProps={MenuProps}
+              >
+                {qcAdmins.map((admin) => (
+                  <MenuItem key={admin._id} value={admin._id}>
+                    <Checkbox checked={selectedQcAdmins.indexOf(admin._id) > -1} />
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ width: '100%' }}>
+                      <Avatar 
+                        src={admin.avatar} 
+                        alt={admin.name}
+                        sx={{ width: 32, height: 32 }}
+                      />
+                      <Stack>
+                        <Typography variant="body2">{admin.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {admin.email}
+                        </Typography>
+                      </Stack>
+                    </Stack>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {qcAdmins.length === 0 && (
+              <Alert severity="warning">
+                No QC Admins found for this project. Please add QC Admins to the project first.
+              </Alert>
+            )}
+
+            {selectedQcAdmins.length > 0 && (
+              <Alert severity="info">
+                {selectedQcAdmins.length} QC Admin{selectedQcAdmins.length > 1 ? 's' : ''} selected for this room.
+              </Alert>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateRoomDialog(false)}>Cancel</Button>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleCreateRoom}
-            disabled={createRoomMutation.isLoading}
+            disabled={createRoomMutation.isLoading || selectedQcAdmins.length === 0}
           >
             {createRoomMutation.isLoading ? <CircularProgress size={20} /> : 'Create'}
           </Button>

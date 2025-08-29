@@ -15,7 +15,7 @@ import {
     subTaskApproval,
     updateUserSubTask,
     videosSubTask,
-} from "../controllers/subUserTask.js";
+} from "../controllers/project.js";
 import { verifyUser } from "../middleware/authMiddleware.js";
 import { ROLES } from "../config/roles.js";
 

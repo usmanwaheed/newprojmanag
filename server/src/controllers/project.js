@@ -4,8 +4,7 @@ import { adminTask } from "../models/adminTask.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-
-import { subUserTask } from "../models/subUserTask.js";
+import { Project } from "../models/project.js";
 import { doscSubTask } from "../models/Docs_SubTask/docs_Subtask.js";
 import { videoSubTask } from "../models/Video_SubTask/video_Subtask.js";
 import { ROLES } from "../config/roles.js";
@@ -87,7 +86,7 @@ const createUserTask = asyncHandler(async (req, res) => {
         tasks.push(teamLead);
     }
 
-    const newTask = new subUserTask({
+    const newTask = new Project({
         title,
         assign: tasks,
         description,
@@ -102,7 +101,7 @@ const createUserTask = asyncHandler(async (req, res) => {
 
     await newTask.save();
 
-    const savedTask = await subUserTask
+    const savedTask = await Project
         .findById(newTask._id)
         .populate("assignedBy", "name avatar");
 
@@ -139,7 +138,7 @@ const getUserSubTask = asyncHandler(async (req, res) => {
     // Validate that the project belongs to the user's company
     await validateProjectCompany(projectId, companyId);
 
-    const tasks = await subUserTask.getSubTasksForProjectAndCompany(
+    const tasks = await Project.getSubTasksForProjectAndCompany(
         projectId,
         companyId
     );
@@ -170,7 +169,7 @@ const getUserForSubTask = asyncHandler(async (req, res) => {
     await validateProjectCompany(projectId, companyId);
 
     const assignedUsers =
-        await subUserTask.getAssignedUsersForProjectAndCompany(
+        await Project.getAssignedUsersForProjectAndCompany(
             projectId,
             companyId
         );
@@ -194,7 +193,7 @@ const deleteUserSubTask = asyncHandler(async (req, res) => {
     const companyId = getUserCompanyId(req.user);
     const { id } = req.params;
 
-    const subtask = await subUserTask.findById(id);
+    const subtask = await Project.findById(id);
 
     // Send deletion notifications before deleting
     await NotificationService.notifySubTaskDeleted(subtask, req.user);
@@ -208,7 +207,7 @@ const deleteUserSubTask = asyncHandler(async (req, res) => {
     }
 
     // Only allow deletion of subtasks that belong to the user's company
-    const deleteTask = await subUserTask.findOneAndDelete({
+    const deleteTask = await Project.findOneAndDelete({
         _id: taskId,
         companyId: companyId,
     });
@@ -230,7 +229,7 @@ const updateUserSubTask = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const subtask = await subUserTask.findByIdAndUpdate(id, updates, {
+    const subtask = await Project.findByIdAndUpdate(id, updates, {
         new: true,
     });
 
@@ -245,7 +244,7 @@ const updateUserSubTask = asyncHandler(async (req, res) => {
         throw new apiError(400, "Invalid Task ID format");
     }
 
-    const existingTask = await subUserTask.findOne({
+    const existingTask = await Project.findOne({
         _id: taskId,
         companyId: companyId,
     });
@@ -295,7 +294,7 @@ const updateUserSubTask = asyncHandler(async (req, res) => {
         }
     }
 
-    const updateTask = await subUserTask
+    const updateTask = await Project
         .findByIdAndUpdate(
             taskId,
             {
@@ -332,7 +331,7 @@ const completeUserSubTask = asyncHandler(async (req, res) => {
         throw new apiError(400, "Task ID not valid");
     }
 
-    const getTaskId = await subUserTask
+    const getTaskId = await Project
         .findOne({ _id: taskID, companyId })
         .select("taskList assign");
 
@@ -369,7 +368,7 @@ const getCompleteUserSubTask = asyncHandler(async (req, res) => {
     }
 
     const completedTasks =
-        await subUserTask.getCompletedSubTasksForCompany(companyId);
+        await Project.getCompletedSubTasksForCompany(companyId);
 
     if (!completedTasks || completedTasks.length === 0) {
         return res
@@ -397,7 +396,7 @@ const subTaskApproval = asyncHandler(async (req, res) => {
 
     const { id } = req.params;
 
-    const subtask = await subUserTask.findById(id);
+    const subtask = await Project.findById(id);
     const oldStatus = subtask.status;
 
     if (!companyId) {
@@ -415,7 +414,7 @@ const subTaskApproval = asyncHandler(async (req, res) => {
         throw new apiError(400, "Task ID not valid");
     }
 
-    const approveTask = await subUserTask
+    const approveTask = await Project
         .findOne({
             _id: taskID,
             companyId: companyId,
@@ -492,7 +491,7 @@ const filterSubTask = asyncHandler(async (req, res) => {
         query[filterField] = { $regex: searchText, $options: "i" };
     }
 
-    const result = await subUserTask.filterSubTasksForCompany(query, companyId);
+    const result = await Project.filterSubTasksForCompany(query, companyId);
 
     res.status(200).json(
         new apiResponse(200, result, "Data fetched successfully.")

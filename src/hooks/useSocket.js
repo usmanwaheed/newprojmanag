@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthProvider';
@@ -13,10 +14,12 @@ export const useSocket = (projectId) => {
   useEffect(() => {
     if (!user?._id || !projectId) return;
 
-    const newSocket = io(process.env.REACT_APP_SERVER_URL || 'http://localhost:5000', {
-      transports: ['websocket'],
-      upgrade: false,
-      rememberUpgrade: false,
+    // Use VITE_ prefixed environment variable, with fallback
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:6007';
+    console.log('Connecting to socket server:', socketUrl);
+    
+    const newSocket = io(socketUrl, {
+      transports: ['websocket', 'polling'], // allow fallback to polling
       autoConnect: true,
       forceNew: true,
       reconnection: true,
@@ -37,7 +40,7 @@ export const useSocket = (projectId) => {
       console.log('Connected to chat server');
       setIsConnected(true);
       reconnectAttempts.current = 0;
-      
+
       // Join project room
       newSocket.emit('join_project', { projectId, userId: user._id });
     });
@@ -52,7 +55,7 @@ export const useSocket = (projectId) => {
       console.error('Connection error:', error);
       setIsConnected(false);
       reconnectAttempts.current += 1;
-      
+
       if (reconnectAttempts.current >= maxReconnectAttempts) {
         console.log('Max reconnection attempts reached');
         newSocket.disconnect();

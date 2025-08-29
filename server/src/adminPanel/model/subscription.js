@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import mongoose, { Schema } from "mongoose";
 import { SuperAdminPlans } from "./SuperAdminPlan.js";
 import { ROLES } from "../../config/roles.js";
@@ -161,7 +162,7 @@ const subscriptionSchema = new mongoose.Schema(
 subscriptionSchema.index({ userId: 1, status: 1 });
 subscriptionSchema.index({ planId: 1 });
 subscriptionSchema.index({ endDate: 1 });
-subscriptionSchema.index({ stripeSubscriptionId: 1 });
+// subscriptionSchema.index({ stripeSubscriptionId: 1 });
 
 // Virtual for checking if subscription is in trial
 subscriptionSchema.virtual("isInTrial").get(function () {
