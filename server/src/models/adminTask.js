@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const taskSchema = new mongoose.Schema(
+const projectSchema = new mongoose.Schema(
     {
         projectTitle: {
             type: String,
@@ -70,22 +70,22 @@ const taskSchema = new mongoose.Schema(
 );
 
 // Add indexes for efficient querying
-taskSchema.index({ companyId: 1 });
-taskSchema.index({ assignedBy: 1 });
-taskSchema.index({ companyId: 1, assignedBy: 1 });
+projectSchema.index({ companyId: 1 });
+projectSchema.index({ assignedBy: 1 });
+projectSchema.index({ companyId: 1, assignedBy: 1 });
 
 // Static method to get tasks for a specific company
-taskSchema.statics.getTasksForCompany = function (companyId) {
+projectSchema.statics.getTasksForCompany = function (companyId) {
     return this.find({ companyId }).populate("assignedBy", "name avatar");
 };
 
 // Static method to get task by ID and company (for security)
-taskSchema.statics.getTaskByIdAndCompany = function (taskId, companyId) {
+projectSchema.statics.getTaskByIdAndCompany = function (taskId, companyId) {
     return this.findOne({ _id: taskId, companyId }).populate(
         "assignedBy",
         "name avatar"
     );
 };
 
-const adminTask = mongoose.model("userTask", taskSchema);
+const adminTask = mongoose.model("projects", projectSchema);
 export { adminTask };
