@@ -31,7 +31,7 @@ const projectSchema = new mongoose.Schema(
             type: Number,
             default: 50,
         },
-        createdBy: {
+        assignedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "UserInfo",
             required: true,
