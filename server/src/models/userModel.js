@@ -209,7 +209,7 @@ UserSchema.methods.checkTrialStatus = async function () {
         this.planStatus = "expired";
 
         // Also block all users associated with this company
-        await User.updateMany(
+        await this.updateMany(
             { companyId: this._id },
             { isActive: false, isBlocked: true }
         );

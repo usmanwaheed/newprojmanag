@@ -6,9 +6,10 @@ import { ChatMessage, UserStatus } from '../models/ChatMessage.js';
 import { User } from '../models/userModel.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { extractLinkPreview } from '../utils/linkPreview.js';
+import { verifyUser } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
-
+router.use(verifyUser());
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -36,7 +37,7 @@ console.log('Chat routes loaded');
 
 // Get all chat rooms for a project
 router.route('/rooms/:projectId').get(async (req, res) => {
-  console.log('➡️ Fetching chat rooms for project:', req.params.projectId);
+  console.log('User IDddddddddddd:', req);
   try {
     const { projectId } = req.params;
 
@@ -75,7 +76,19 @@ router.route('/rooms/:projectId').get(async (req, res) => {
 // Create a new chat room
 router.route('/rooms').post(async (req, res) => {
   try {
-    const { name, description, projectId, isPrivate = false } = req.body;
+    // Extract ALL data from the request body - including members array sent from frontend
+    const { 
+      name, 
+      description, 
+      projectId, 
+      isPrivate = false, 
+      members = [] // This is the members array from your frontend payload
+    } = req.body;
+    
+    console.log("Full request body:", req.body);
+    console.log("Members from frontend:", members);
+    console.log("User from auth middleware:", req.user);
+    
     if (!name || !projectId) {
       return res.status(400).json({
         success: false,
@@ -83,22 +96,50 @@ router.route('/rooms').post(async (req, res) => {
       });
     }
 
-    const qcAdmins = await User.find({ role: 'qcadmin' }).select('_id');
-    const members = [req.user._id, ...qcAdmins.map(admin => admin._id)];
+    // Check if user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
 
+    // Use the members array sent from frontend
+    // Filter out any null/undefined values
+    const validMembers = members.filter(memberId => memberId != null);
+    
+    console.log("Valid members after filtering:", validMembers);
+    
+    // Validate that the member IDs exist in the database
+    const existingUsers = await User.find({ 
+      _id: { $in: validMembers } 
+    }).select('_id name role');
+    
+    console.log("Existing users found:", existingUsers);
+    
+    const existingUserIds = existingUsers.map(user => user._id.toString());
+    
     const chatRoom = new ChatRoom({
       name: name.trim(),
-      description: description?.trim(),
+      description: description?.trim() || '',
       projectId,
       createdBy: req.user._id,
-      members: [...new Set(members)],
-      admins: [req.user._id, ...qcAdmins.map(admin => admin._id)],
+      members: existingUserIds, // Use the members from frontend payload
+      admins: [req.user._id], // You can modify this logic as needed
       isPrivate
     });
 
-    await chatRoom.save();
-    await chatRoom.populate('createdBy', 'name avatar');
+    console.log("Chat room before save:", chatRoom);
 
+    await chatRoom.save();
+    await chatRoom.populate([
+      { path: 'createdBy', select: 'name avatar' },
+      { path: 'members', select: 'name avatar role' }
+    ]);
+
+    console.log("Chat room after save and populate:", chatRoom);
+
+    // Emit socket event
     req.io?.to(`project_${projectId}`).emit('room_created', chatRoom);
 
     res.status(201).json({
@@ -108,7 +149,11 @@ router.route('/rooms').post(async (req, res) => {
     });
   } catch (error) {
     console.error('Create chat room error:', error);
-    res.status(500).json({ success: false, message: 'Failed to create chat room', error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to create chat room', 
+      error: error.message 
+    });
   }
 });
 

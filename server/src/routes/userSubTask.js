@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { Router } from "express";
 import {
     completeUserSubTask,
@@ -15,7 +16,7 @@ import {
     subTaskApproval,
     updateUserSubTask,
     videosSubTask,
-} from "../controllers/project.js";
+} from "../controllers/subUserTask.js";
 import { verifyUser } from "../middleware/authMiddleware.js";
 import { ROLES } from "../config/roles.js";
 
@@ -27,6 +28,7 @@ router
         verifyUser([ROLES.QCADMIN, ROLES.USER, ROLES.COMPANY]),
         createUserTask
     );
+    console.log("SubTask created hhhhhhhhhhhhh");
 
 router
     .route("/get-subTask")
