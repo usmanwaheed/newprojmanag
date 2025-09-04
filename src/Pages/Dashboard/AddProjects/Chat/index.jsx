@@ -203,11 +203,13 @@ const ProjectChat = ({ projectId }) => {
   // Initialize selected members when dialog opens
   useEffect(() => {
     if (createRoomDialog) {
-      // Pre-select all QC Admins by default
-      setSelectedQcAdmins(qcAdmins.map(admin => admin._id));
+      const initialAdmins = user.role === 'qcadmin'
+        ? [user._id, ...qcAdmins.map(admin => admin._id)]
+        : qcAdmins.map(admin => admin._id);
+      setSelectedQcAdmins(initialAdmins);
       setSelectedMembers([]);
     }
-  }, [createRoomDialog, qcAdmins]);
+  }, [createRoomDialog, qcAdmins, user]);
 
   // Handle send message
   const handleSendMessage = (messageData = null) => {
@@ -283,7 +285,7 @@ const ProjectChat = ({ projectId }) => {
       return;
     }
 
-    if (selectedQcAdmins.length === 0) {
+    if (selectedQcAdmins.length === 0 && user.role !== 'qcadmin') {
       toast.error('At least one QC Admin must be selected');
       return;
     }

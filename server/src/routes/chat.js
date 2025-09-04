@@ -43,9 +43,15 @@ router.route('/rooms/:projectId/users').get(async (req, res) => {
     const { projectId } = req.params;
 
     const projectUsers = await ProjectRole.find({ projectId, isActive: true })
-      .populate('userId', 'name avatar role');
+      .populate('userId', 'name avatar email');
 
-    const users = projectUsers.map(pr => pr.userId);
+    const users = projectUsers.map(pr => ({
+      _id: pr.userId._id,
+      name: pr.userId.name,
+      avatar: pr.userId.avatar,
+      email: pr.userId.email,
+      role: pr.role
+    }));
 
     res.status(200).json({ success: true, data: users });
   } catch (error) {
@@ -162,8 +168,11 @@ router.route('/rooms').post(async (req, res) => {
       });
     }
 
-
     const existingUserIds = [...new Set(memberIds)];
+
+    const adminIds = projectRoles
+      .filter(pr => pr.role === ROLES.QCADMIN)
+      .map(pr => pr.userId._id.toString());
 
     const chatRoom = new ChatRoom({
       name: name.trim(),
@@ -171,7 +180,7 @@ router.route('/rooms').post(async (req, res) => {
       projectId,
       createdBy: req.user._id,
       members: existingUserIds, // Use the members from frontend payload filtered by project membership
-      admins: [req.user._id], // You can modify this logic as needed
+      admins: [...new Set([req.user._id.toString(), ...adminIds])],
       isPrivate
     });
 
