@@ -4,6 +4,7 @@ import multer from 'multer';
 import ChatRoom from '../models/ChatRoom.js';
 import { ChatMessage, UserStatus } from '../models/ChatMessage.js';
 import { User } from '../models/userModel.js';
+import ProjectRole from '../models/projectRole.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { extractLinkPreview } from '../utils/linkPreview.js';
 import { verifyUser } from '../middleware/authMiddleware.js';
@@ -35,6 +36,27 @@ const upload = multer({
 console.log('Chat routes loaded');
 
 // ---------------------- Chat Room Routes ----------------------
+
+// Get all users assigned to a project for selection in chat rooms
+router.route('/rooms/:projectId/users').get(async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const projectUsers = await ProjectRole.find({ projectId, isActive: true })
+      .populate('userId', 'name avatar role');
+
+    const users = projectUsers.map(pr => pr.userId);
+
+    res.status(200).json({ success: true, data: users });
+  } catch (error) {
+    console.error('Get project users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch project users',
+      error: error.message
+    });
+  }
+});
 
 // Get all chat rooms for a project
 router.route('/rooms/:projectId').get(async (req, res) => {
@@ -115,30 +137,38 @@ router.route('/rooms').post(async (req, res) => {
 
     console.log("Valid members after filtering:", validMembers);
 
-    // Validate that the member IDs exist in the database
-    const existingUsers = await User.find({
-      _id: { $in: validMembers }
-    }).select('_id name role');
+    // Fetch project roles for provided members to ensure they belong to the project
+    const projectRoles = await ProjectRole.find({
+      projectId,
+      userId: { $in: validMembers },
+      isActive: true
+    }).populate('userId', 'name avatar role');
 
-    console.log("Existing users found:", existingUsers);
+    // Ensure the creator is part of the project
+    const memberIds = projectRoles.map(pr => pr.userId._id.toString());
+    if (!memberIds.includes(req.user._id.toString())) {
+      return res.status(403).json({
+        success: false,
+        message: 'Creator must be part of the project'
+      });
+    }
 
     // Ensure at least one QC admin is part of the room
-    const hasQcAdmin = existingUsers.some(user => user.role === ROLES.QCADMIN);
+    const hasQcAdmin = projectRoles.some(pr => pr.role === ROLES.QCADMIN);
     if (!hasQcAdmin) {
       return res.status(400).json({
         success: false,
         message: 'At least one QC Admin is required in a chat room'
       });
     }
-
-    const existingUserIds = existingUsers.map(user => user._id.toString());
+    const existingUserIds = [...new Set(memberIds)];
 
     const chatRoom = new ChatRoom({
       name: name.trim(),
       description: description?.trim() || '',
       projectId,
       createdBy: req.user._id,
-      members: existingUserIds, // Use the members from frontend payload
+      members: existingUserIds, // Use the members from frontend payload filtered by project membership
       admins: [req.user._id], // You can modify this logic as needed
       isPrivate
     });
