@@ -162,6 +162,7 @@ router.route('/rooms').post(async (req, res) => {
       });
     }
 
+
     const existingUserIds = [...new Set(memberIds)];
 
     const chatRoom = new ChatRoom({
