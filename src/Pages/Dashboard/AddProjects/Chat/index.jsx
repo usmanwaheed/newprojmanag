@@ -6,8 +6,7 @@ import {
   Avatar, Paper, Chip, Dialog, DialogTitle, DialogContent,
   DialogActions, List, ListItem, ListItemAvatar, ListItemText,
   Badge, Tooltip, Divider, Menu, MenuItem, CircularProgress,
-  Alert, Fab, InputAdornment, FormControl, InputLabel, Select,
-  OutlinedInput, Checkbox, ListItemText as MuiListItemText
+  Alert, InputAdornment, Checkbox
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -31,19 +30,6 @@ import {
 import { toast } from 'react-toastify';
 import PropTypes from 'prop-types';
 
-const ITEM_HEIGHT = 48;
-const ITEM_PADDING_TOP = 8;
-const MenuProps = {
-  PaperProps: {
-    style: {
-      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
-      width: 250,
-    },
-  },
-  // Keep menus within the dialog to prevent it from closing
-  // when selecting items
-  disablePortal: true,
-};
 
 const ProjectChat = ({ projectId }) => {
   const { user, theme, mode } = useAuth();
@@ -269,10 +255,18 @@ const ProjectChat = ({ projectId }) => {
     uploadFileMutation.mutate({ file, roomId: selectedRoom._id });
   };
 
-  // Handle QC Admin selection change
-  const handleQcAdminChange = (event) => {
-    const value = event.target.value;
-    setSelectedQcAdmins(typeof value === 'string' ? value.split(',') : value);
+  // Toggle QC Admin selection
+  const toggleQcAdmin = (id) => {
+    setSelectedQcAdmins(prev =>
+      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle additional member selection
+  const toggleMember = (id) => {
+    setSelectedMembers(prev =>
+      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+    );
   };
 
   // Handle additional member selection change
@@ -635,53 +629,45 @@ const ProjectChat = ({ projectId }) => {
               placeholder="Brief description of the room purpose"
             />
             
-            {/* QC Admin Selection Dropdown */}
-            <FormControl fullWidth>
-              <InputLabel id="qc-admin-select-label">Select QC Admins</InputLabel>
-              <Select
-                labelId="qc-admin-select-label"
-                id="qc-admin-select"
-                multiple
-                value={selectedQcAdmins}
-                onChange={handleQcAdminChange}
-                input={<OutlinedInput label="Select QC Admins" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((value) => {
-                      const admin = qcAdmins.find(admin => admin._id === value);
-                      return (
-                        <Chip 
-                          key={value} 
-                          label={admin?.name || 'Unknown Admin'} 
-                          size="small"
-                          avatar={<Avatar src={admin?.avatar} sx={{ width: 24, height: 24 }} />}
-                        />
-                      );
-                    })}
-                  </Box>
-                )}
-                MenuProps={MenuProps}
-              >
-                {qcAdmins.map((admin) => (
-                  <MenuItem key={admin._id} value={admin._id}>
-                    <Checkbox checked={selectedQcAdmins.indexOf(admin._id) > -1} />
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ width: '100%' }}>
-                      <Avatar 
-                        src={admin.avatar} 
-                        alt={admin.name}
-                        sx={{ width: 32, height: 32 }}
-                      />
-                      <Stack>
-                        <Typography variant="body2">{admin.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {admin.email}
-                        </Typography>
-                      </Stack>
-                    </Stack>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {/* QC Admin Selection */}
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>QC Admins</Typography>
+            <List dense>
+              {qcAdmins.map((admin) => (
+                <ListItem key={admin._id} disablePadding>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedQcAdmins.includes(admin._id)}
+                    onChange={() => toggleQcAdmin(admin._id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                  <ListItemAvatar>
+                    <Avatar src={admin.avatar} alt={admin.name} sx={{ width: 32, height: 32 }} />
+                  </ListItemAvatar>
+                  <ListItemText primary={admin.name} secondary={admin.email} />
+                </ListItem>
+              ))}
+            </List>
+
+            {/* Additional Members Selection */}
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>Add Members</Typography>
+            <List dense>
+              {otherMembers.map((member) => (
+                <ListItem key={member._id} disablePadding>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedMembers.includes(member._id)}
+                    onChange={() => toggleMember(member._id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                  <ListItemAvatar>
+                    <Avatar src={member.avatar} alt={member.name} sx={{ width: 32, height: 32 }} />
+                  </ListItemAvatar>
+                  <ListItemText primary={member.name} secondary={member.email} />
+                </ListItem>
+              ))}
+            </List>
 
             {/* Additional Members Selection Dropdown */}
             <FormControl fullWidth sx={{ mt: 2 }}>
