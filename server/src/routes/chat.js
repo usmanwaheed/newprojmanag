@@ -161,7 +161,6 @@ router.route('/rooms').post(async (req, res) => {
         message: 'At least one QC Admin is required in a chat room'
       });
     }
-
     const existingUserIds = [...new Set(memberIds)];
 
     const chatRoom = new ChatRoom({
