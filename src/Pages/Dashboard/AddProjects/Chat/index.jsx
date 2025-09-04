@@ -40,6 +40,9 @@ const MenuProps = {
       width: 250,
     },
   },
+  // Keep menus within the dialog to prevent it from closing
+  // when selecting items
+  disablePortal: true,
 };
 
 const ProjectChat = ({ projectId }) => {
