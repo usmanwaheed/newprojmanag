@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const userStatusSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'UserInfo',
+    ref: 'User',
     required: true,
     unique: true
   },

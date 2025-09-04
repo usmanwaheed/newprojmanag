@@ -19,16 +19,16 @@ const chatRoomSchema = new mongoose.Schema({
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'UserInfo',
+    ref: 'User',
     required: true
   },
   members: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'UserInfo'
+    ref: 'User'
   }],
   admins: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'UserInfo'
+    ref: 'User'
   }],
   isPrivate: {
     type: Boolean,
@@ -38,7 +38,7 @@ const chatRoomSchema = new mongoose.Schema({
     content: String,
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'UserInfo'
+      ref: 'User'
     },
     timestamp: Date
   },
