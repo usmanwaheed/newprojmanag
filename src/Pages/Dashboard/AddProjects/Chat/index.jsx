@@ -174,6 +174,7 @@ const ProjectChat = ({ projectId }) => {
       toast.error(error?.response?.data?.message || 'Failed to leave room');
     }
   });
+
   // Separate project users by role
   const allProjectUsers = useMemo(
     () => projectUsers?.data?.filter(u => u._id !== user._id) || [],
@@ -194,6 +195,7 @@ const ProjectChat = ({ projectId }) => {
     map.set(user._id, { _id: user._id, name: user.name, avatar: user.avatar, role: user.role });
     return (selectedRoom.members || []).map(id => map.get(id)).filter(Boolean);
   }, [selectedRoom, projectUsers?.data, user]);
+
 
   // Socket event listeners
   useEffect(() => {
