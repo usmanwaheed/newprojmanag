@@ -41,7 +41,6 @@ console.log('Chat routes loaded');
 router.route('/rooms/:projectId/users').get(async (req, res) => {
   try {
     const { projectId } = req.params;
-
     const companyId = req.user.role === ROLES.COMPANY ? req.user._id : req.user.companyId;
 
     // Ensure the project belongs to the requesting company
@@ -170,7 +169,6 @@ router.route('/rooms').post(async (req, res) => {
       });
     }
 
-    // Use the members array sent from frontend and ensure creator is included
     // Filter out any null/undefined values
     const validMembers = members.filter(memberId => memberId != null);
 
@@ -180,7 +178,6 @@ router.route('/rooms').post(async (req, res) => {
 
     console.log("Valid members after filtering:", validMembers);
 
-    // Fetch project roles for provided members to ensure they belong to the project and company
     const projectRoles = await ProjectRole.find({
       projectId,
       userId: { $in: validMembers },
@@ -224,6 +221,7 @@ router.route('/rooms').post(async (req, res) => {
     const existingUserIds = [...new Set(memberIds)];
 
     const adminIds = filteredRoles
+
       .filter(pr => pr.role === ROLES.QCADMIN)
       .map(pr => pr.userId._id.toString());
 
