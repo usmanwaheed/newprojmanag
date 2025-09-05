@@ -268,6 +268,14 @@ router.route('/rooms').post(async (req, res) => {
       message: 'Failed to create chat room',
       error: error.message
     });
+
+    res.status(200).json({
+      success: true,
+      data: { name: room.name, description: room.description }
+    });
+  } catch (error) {
+    console.error('Update room error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update room', error: error.message });
   }
 });
 

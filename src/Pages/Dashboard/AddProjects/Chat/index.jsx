@@ -5,7 +5,7 @@ import {
   Box, Stack, Typography, TextField, IconButton, Button,
   Avatar, Paper, Chip, Dialog, DialogTitle, DialogContent,
   DialogActions, List, ListItem, ListItemAvatar, ListItemText,
-  ListItemIcon, Badge, Tooltip, Divider, Menu, MenuItem, CircularProgress,
+  ListItemIcon, ListItemButton, Badge, Tooltip, Divider, Menu, MenuItem, CircularProgress,
   Alert, InputAdornment, Checkbox
 } from '@mui/material';
 import {
@@ -174,7 +174,6 @@ const ProjectChat = ({ projectId }) => {
       toast.error(error?.response?.data?.message || 'Failed to leave room');
     }
   });
-
   // Separate project users by role
   const allProjectUsers = useMemo(
     () => projectUsers?.data?.filter(u => u._id !== user._id) || [],
@@ -195,7 +194,6 @@ const ProjectChat = ({ projectId }) => {
     map.set(user._id, { _id: user._id, name: user.name, avatar: user.avatar, role: user.role });
     return (selectedRoom.members || []).map(id => map.get(id)).filter(Boolean);
   }, [selectedRoom, projectUsers?.data, user]);
-
 
   // Socket event listeners
   useEffect(() => {
@@ -498,30 +496,30 @@ const ProjectChat = ({ projectId }) => {
           ) : (
             <List>
               {chatRooms?.data?.map(room => (
-                <ListItem
-                  key={room._id}
-                  button
-                  selected={selectedRoom?._id === room._id}
-                  onClick={() => setSelectedRoom(room)}
-                >
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                      {room.name.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={room.name}
-                    secondary={room.description}
-                    primaryTypographyProps={{ noWrap: true }}
-                    secondaryTypographyProps={{ noWrap: true }}
-                  />
-                  {room.unreadCount > 0 && (
-                    <Chip
-                      size="small"
-                      color="primary"
-                      label={room.unreadCount}
+                <ListItem key={room._id} disablePadding>
+                  <ListItemButton
+                    selected={selectedRoom?._id === room._id}
+                    onClick={() => setSelectedRoom(room)}
+                  >
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                        {room.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={room.name}
+                      secondary={room.description}
+                      primaryTypographyProps={{ noWrap: true }}
+                      secondaryTypographyProps={{ noWrap: true }}
                     />
-                  )}
+                    {room.unreadCount > 0 && (
+                      <Chip
+                        size="small"
+                        color="primary"
+                        label={room.unreadCount}
+                      />
+                    )}
+                  </ListItemButton>
                 </ListItem>
               ))}
             </List>
