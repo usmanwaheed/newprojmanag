@@ -269,12 +269,6 @@ const ProjectChat = ({ projectId }) => {
     );
   };
 
-  // Handle additional member selection change
-  const handleMemberChange = (event) => {
-    const value = event.target.value;
-    setSelectedMembers(typeof value === 'string' ? value.split(',') : value);
-  };
-
   // Create new room
   const handleCreateRoom = () => {
     if (!newRoomData.name.trim()) {
@@ -668,54 +662,6 @@ const ProjectChat = ({ projectId }) => {
                 </ListItem>
               ))}
             </List>
-
-            {/* Additional Members Selection Dropdown */}
-            <FormControl fullWidth sx={{ mt: 2 }}>
-              <InputLabel id="member-select-label">Add Members</InputLabel>
-              <Select
-                labelId="member-select-label"
-                id="member-select"
-                multiple
-                value={selectedMembers}
-                onChange={handleMemberChange}
-                input={<OutlinedInput label="Add Members" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((value) => {
-                      const member = otherMembers.find(m => m._id === value);
-                      return (
-                        <Chip
-                          key={value}
-                          label={member?.name || 'Unknown User'}
-                          size="small"
-                          avatar={<Avatar src={member?.avatar} sx={{ width: 24, height: 24 }} />}
-                        />
-                      );
-                    })}
-                  </Box>
-                )}
-                MenuProps={MenuProps}
-              >
-                {otherMembers.map((member) => (
-                  <MenuItem key={member._id} value={member._id}>
-                    <Checkbox checked={selectedMembers.indexOf(member._id) > -1} />
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ width: '100%' }}>
-                      <Avatar
-                        src={member.avatar}
-                        alt={member.name}
-                        sx={{ width: 32, height: 32 }}
-                      />
-                      <Stack>
-                        <Typography variant="body2">{member.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {member.email}
-                        </Typography>
-                      </Stack>
-                    </Stack>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
 
             {qcAdmins.length === 0 && (
               <Alert severity="warning">

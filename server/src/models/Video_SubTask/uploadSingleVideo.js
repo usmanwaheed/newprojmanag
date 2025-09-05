@@ -23,7 +23,7 @@ const uploadVideoSchema = new mongoose.Schema(
         },
         // projectId: {
         //     type: mongoose.Schema.Types.ObjectId,
-        //     ref: "userTask",
+        //     ref: "Project",
         // },
         companyId: {
             type: mongoose.Schema.Types.ObjectId,
