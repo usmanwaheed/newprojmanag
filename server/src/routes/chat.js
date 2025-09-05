@@ -41,6 +41,8 @@ console.log('Chat routes loaded');
 router.route('/rooms/:projectId/users').get(async (req, res) => {
   try {
     const { projectId } = req.params;
+
+
     const companyId = req.user.role === ROLES.COMPANY ? req.user._id : req.user.companyId;
 
     // Ensure the project belongs to the requesting company
@@ -169,6 +171,8 @@ router.route('/rooms').post(async (req, res) => {
       });
     }
 
+    // Use the members array sent from frontend and ensure creator is included
+
     // Filter out any null/undefined values
     const validMembers = members.filter(memberId => memberId != null);
 
@@ -177,6 +181,11 @@ router.route('/rooms').post(async (req, res) => {
     }
 
     console.log("Valid members after filtering:", validMembers);
+
+    // Separate members to validate (excluding creator)
+    const membersToCheck = validMembers.filter(id => id.toString() !== req.user._id.toString());
+
+    // Fetch project roles for provided members to ensure they belong to the project and company
 
     const projectRoles = await ProjectRole.find({
       projectId,
@@ -193,20 +202,22 @@ router.route('/rooms').post(async (req, res) => {
 
     const memberIds = filteredRoles.map(pr => pr.userId._id.toString());
 
-    // All provided members must belong to the project and company
-    if (memberIds.length !== validMembers.length) {
+    // Validate non-creator members belong to the project and company
+    const nonCreatorIds = filteredRoles
+      .filter(pr => pr.userId._id.toString() !== req.user._id.toString())
+      .map(pr => pr.userId._id.toString());
+
+    if (nonCreatorIds.length !== membersToCheck.length) {
       return res.status(403).json({
         success: false,
         message: 'All members must belong to your company and be assigned to the project'
       });
     }
 
-    // Ensure the creator is part of the project
+    // Ensure the creator is included in member list
     if (!memberIds.includes(req.user._id.toString())) {
-      return res.status(403).json({
-        success: false,
-        message: 'Creator must be part of the project'
-      });
+      memberIds.push(req.user._id.toString());
+
     }
 
     // Ensure at least one QC admin is part of the room
