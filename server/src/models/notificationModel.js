@@ -76,7 +76,11 @@ const notificationSchema = new mongoose.Schema(
         data: {
             taskId: {
                 type: mongoose.Schema.Types.ObjectId,
-                ref: "userTask",
+                // The project model was previously named "userTask"
+                // and some references still pointed to the old name.
+                // Update the ref so Mongoose correctly populates
+                // project documents in notifications.
+                ref: "Project",
                 default: null,
             },
             recordingId: {
@@ -225,7 +229,8 @@ notificationSchema.statics.getNotificationsForUser = function (
 
     return this.find(query)
         .populate("sender", "name avatar role")
-        .populate("data.taskId", "projectTitle description")
+        // Populate using the updated Project fields
+        .populate("data.taskId", "title description")
         .populate("data.recordingId", "title description")
         .sort({ [sortBy]: sortOrder })
         .limit(limit)

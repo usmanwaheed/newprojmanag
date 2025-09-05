@@ -13,7 +13,8 @@ const docsSubTaskSchema = new mongoose.Schema(
         },
         projectId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "userTask",
+            // Align with renamed Project model
+            ref: "Project",
             required: true,
         },
         // NEW: Company reference for security

@@ -618,7 +618,8 @@ const getCompanyDashboard = asyncHandler(async (req, res) => {
         },
         {
             $lookup: {
-                from: "usertasks",
+                // Projects collection now backs the time tracking
+                from: "projects",
                 localField: "_id",
                 foreignField: "_id",
                 as: "project",
@@ -628,7 +629,7 @@ const getCompanyDashboard = asyncHandler(async (req, res) => {
         {
             $project: {
                 projectId: "$_id",
-                projectTitle: "$project.projectTitle",
+                projectTitle: "$project.title",
                 totalTime: 1,
                 totalSessions: 1,
                 uniqueUsersCount: { $size: "$uniqueUsers" },

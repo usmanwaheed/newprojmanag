@@ -6,8 +6,7 @@ import {
   Avatar, Paper, Chip, Dialog, DialogTitle, DialogContent,
   DialogActions, List, ListItem, ListItemAvatar, ListItemText,
   Badge, Tooltip, Divider, Menu, MenuItem, CircularProgress,
-  Alert, Fab, InputAdornment, FormControl, InputLabel, Select,
-  OutlinedInput, Checkbox, ListItemText as MuiListItemText
+  Alert, InputAdornment, Checkbox
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -25,22 +24,11 @@ import { useSocket } from '../../../../hooks/useSocket';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createChatRoom, getChatRooms, sendMessage as apiSendMessage,
-  getMessages, uploadChatFile, joinChatRoom as apiJoinChatRoom
+  getMessages, uploadChatFile, joinChatRoom as apiJoinChatRoom,
+  getProjectUsers
 } from '../../../../api/chat';
 import { toast } from 'react-toastify';
-import { getUserForSubTask } from '../../../../api/userSubTask';
 import PropTypes from 'prop-types';
-
-const ITEM_HEIGHT = 48;
-const ITEM_PADDING_TOP = 8;
-const MenuProps = {
-  PaperProps: {
-    style: {
-      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
-      width: 250,
-    },
-  },
-};
 
 const ProjectChat = ({ projectId }) => {
   const { user, theme, mode } = useAuth();
@@ -53,6 +41,7 @@ const ProjectChat = ({ projectId }) => {
   const [createRoomDialog, setCreateRoomDialog] = useState(false);
   const [newRoomData, setNewRoomData] = useState({ name: '', description: '', isPrivate: false });
   const [selectedQcAdmins, setSelectedQcAdmins] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -88,7 +77,7 @@ const ProjectChat = ({ projectId }) => {
   // Fetch project users for room creation
   const { data: projectUsers } = useQuery({
     queryKey: ['projectUsers', projectId],
-    queryFn: () => getUserForSubTask(projectId),
+    queryFn: () => getProjectUsers(projectId),
     enabled: !!projectId
   });
 
@@ -100,6 +89,7 @@ const ProjectChat = ({ projectId }) => {
       setCreateRoomDialog(false);
       setNewRoomData({ name: '', description: '', isPrivate: false });
       setSelectedQcAdmins([]);
+      setSelectedMembers([]);
       setSelectedRoom(data.data);
       toast.success('Chat room created successfully!');
     },
@@ -138,8 +128,10 @@ const ProjectChat = ({ projectId }) => {
       setSelectedFile(null);
     }
   });
-  // Get QC Admins from project users
-  const qcAdmins = projectUsers?.data?.filter(user => user.role === 'qcadmin') || [];
+  // Separate project users by role
+  const allProjectUsers = projectUsers?.data?.filter(u => u._id !== user._id) || [];
+  const qcAdmins = allProjectUsers.filter(u => u.role === 'qcadmin');
+  const otherMembers = allProjectUsers.filter(u => u.role !== 'qcadmin');
 
   // Socket event listeners
   useEffect(() => {
@@ -196,13 +188,16 @@ const ProjectChat = ({ projectId }) => {
     }
   }, [selectedRoom, socket, isConnected, joinChatRoom, leaveChatRoom]);
 
-  // Initialize selected QC Admins when dialog opens
+  // Initialize selected members when dialog opens
   useEffect(() => {
     if (createRoomDialog) {
-      // Pre-select all QC Admins by default
-      setSelectedQcAdmins(qcAdmins.map(admin => admin._id));
+      const initialAdmins = user.role === 'qcadmin'
+        ? [user._id, ...qcAdmins.map(admin => admin._id)]
+        : qcAdmins.map(admin => admin._id);
+      setSelectedQcAdmins(initialAdmins);
+      setSelectedMembers([]);
     }
-  }, [createRoomDialog, qcAdmins]);
+  }, [createRoomDialog, qcAdmins, user]);
 
   // Handle send message
   const handleSendMessage = (messageData = null) => {
@@ -259,10 +254,18 @@ const ProjectChat = ({ projectId }) => {
     uploadFileMutation.mutate({ file, roomId: selectedRoom._id });
   };
 
-  // Handle QC Admin selection change
-  const handleQcAdminChange = (event) => {
-    const value = event.target.value;
-    setSelectedQcAdmins(typeof value === 'string' ? value.split(',') : value);
+  // Toggle QC Admin selection
+  const toggleQcAdmin = (id) => {
+    setSelectedQcAdmins(prev =>
+      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle additional member selection
+  const toggleMember = (id) => {
+    setSelectedMembers(prev =>
+      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+    );
   };
 
   // Create new room
@@ -272,7 +275,7 @@ const ProjectChat = ({ projectId }) => {
       return;
     }
 
-    if (selectedQcAdmins.length === 0) {
+    if (selectedQcAdmins.length === 0 && user.role !== 'qcadmin') {
       toast.error('At least one QC Admin must be selected');
       return;
     }
@@ -280,7 +283,7 @@ const ProjectChat = ({ projectId }) => {
     const roomData = {
       ...newRoomData,
       projectId,
-      members: [user._id, ...selectedQcAdmins]
+      members: [...new Set([user._id, ...selectedQcAdmins, ...selectedMembers])]
     };
 
     createRoomMutation.mutate(roomData);
@@ -291,6 +294,7 @@ const ProjectChat = ({ projectId }) => {
     setCreateRoomDialog(false);
     setNewRoomData({ name: '', description: '', isPrivate: false });
     setSelectedQcAdmins([]);
+    setSelectedMembers([]);
   };
 
   // Get user status
@@ -618,53 +622,45 @@ const ProjectChat = ({ projectId }) => {
               placeholder="Brief description of the room purpose"
             />
             
-            {/* QC Admin Selection Dropdown */}
-            <FormControl fullWidth>
-              <InputLabel id="qc-admin-select-label">Select QC Admins</InputLabel>
-              <Select
-                labelId="qc-admin-select-label"
-                id="qc-admin-select"
-                multiple
-                value={selectedQcAdmins}
-                onChange={handleQcAdminChange}
-                input={<OutlinedInput label="Select QC Admins" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((value) => {
-                      const admin = qcAdmins.find(admin => admin._id === value);
-                      return (
-                        <Chip 
-                          key={value} 
-                          label={admin?.name || 'Unknown Admin'} 
-                          size="small"
-                          avatar={<Avatar src={admin?.avatar} sx={{ width: 24, height: 24 }} />}
-                        />
-                      );
-                    })}
-                  </Box>
-                )}
-                MenuProps={MenuProps}
-              >
-                {qcAdmins.map((admin) => (
-                  <MenuItem key={admin._id} value={admin._id}>
-                    <Checkbox checked={selectedQcAdmins.indexOf(admin._id) > -1} />
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ width: '100%' }}>
-                      <Avatar 
-                        src={admin.avatar} 
-                        alt={admin.name}
-                        sx={{ width: 32, height: 32 }}
-                      />
-                      <Stack>
-                        <Typography variant="body2">{admin.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {admin.email}
-                        </Typography>
-                      </Stack>
-                    </Stack>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {/* QC Admin Selection */}
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>QC Admins</Typography>
+            <List dense>
+              {qcAdmins.map((admin) => (
+                <ListItem key={admin._id} disablePadding>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedQcAdmins.includes(admin._id)}
+                    onChange={() => toggleQcAdmin(admin._id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                  <ListItemAvatar>
+                    <Avatar src={admin.avatar} alt={admin.name} sx={{ width: 32, height: 32 }} />
+                  </ListItemAvatar>
+                  <ListItemText primary={admin.name} secondary={admin.email} />
+                </ListItem>
+              ))}
+            </List>
+
+            {/* Additional Members Selection */}
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>Add Members</Typography>
+            <List dense>
+              {otherMembers.map((member) => (
+                <ListItem key={member._id} disablePadding>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedMembers.includes(member._id)}
+                    onChange={() => toggleMember(member._id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                  <ListItemAvatar>
+                    <Avatar src={member.avatar} alt={member.name} sx={{ width: 32, height: 32 }} />
+                  </ListItemAvatar>
+                  <ListItemText primary={member.name} secondary={member.email} />
+                </ListItem>
+              ))}
+            </List>
 
             {qcAdmins.length === 0 && (
               <Alert severity="warning">
@@ -675,6 +671,12 @@ const ProjectChat = ({ projectId }) => {
             {selectedQcAdmins.length > 0 && (
               <Alert severity="info">
                 {selectedQcAdmins.length} QC Admin{selectedQcAdmins.length > 1 ? 's' : ''} selected for this room.
+              </Alert>
+            )}
+
+            {selectedMembers.length > 0 && (
+              <Alert severity="info">
+                {selectedMembers.length} additional member{selectedMembers.length > 1 ? 's' : ''} selected.
               </Alert>
             )}
           </Stack>

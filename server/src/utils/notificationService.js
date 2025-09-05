@@ -131,7 +131,8 @@ class NotificationService {
         try {
             // Get task details and notify the assigner
             const task = await mongoose
-                .model("userTask")
+                // userTask schema was renamed to Project
+                .model("Project")
                 .findById(taskId)
                 .populate("assignedBy", "_id name");
 
@@ -146,7 +147,8 @@ class NotificationService {
                 companyId,
                 type: "TASK_STATUS_CHANGED",
                 title: "Task Status Updated",
-                message: `Task "${task.projectTitle}" status changed to: ${status}`,
+                // Use the current title field from Project model
+                message: `Task "${task.title}" status changed to: ${status}`,
                 data: { taskId },
                 priority: "medium",
                 actionButton: {
@@ -156,7 +158,7 @@ class NotificationService {
             });
 
             console.log(
-                `📋 Task status change notification sent for task: ${task.projectTitle}`
+                `📋 Task status change notification sent for task: ${task.title}`
             );
         } catch (error) {
             console.error(
@@ -174,12 +176,13 @@ class NotificationService {
     ) {
         try {
             // Get task details and notify assigned users
-            const task = await mongoose.model("userTask").findById(taskId);
+            const task = await mongoose.model("Project").findById(taskId);
             if (!task) return;
 
             // Get assigned user IDs
             const users = await User.find({
-                name: { $in: task.teamLeadName },
+                // teamLeadName is legacy; default to empty array if missing
+                name: { $in: task.teamLeadName || [] },
                 companyId: companyId,
             }).select("_id");
 
@@ -190,8 +193,8 @@ class NotificationService {
                 ? "Task Approved  "
                 : "Task Not Approved  ";
             const message = isApproved
-                ? `Great news! Your task "${task.projectTitle}" has been approved.`
-                : `Your task "${task.projectTitle}" was not approved. Please check for feedback.`;
+                ? `Great news! Your task "${task.title}" has been approved.`
+                : `Your task "${task.title}" was not approved. Please check for feedback.`;
 
             await this.createBulkNotifications({
                 recipients,
@@ -209,7 +212,7 @@ class NotificationService {
             });
 
             console.log(
-                `📋 Task approval notification sent for: ${task.projectTitle}`
+                `📋 Task approval notification sent for: ${task.title}`
             );
         } catch (error) {
             console.error("  Error sending task approval notification:", error);
@@ -218,12 +221,12 @@ class NotificationService {
 
     static async notifyTaskDueSoon(taskId, companyId) {
         try {
-            const task = await mongoose.model("userTask").findById(taskId);
+            const task = await mongoose.model("Project").findById(taskId);
             if (!task) return;
 
             // Get assigned user IDs
             const users = await User.find({
-                name: { $in: task.teamLeadName },
+                name: { $in: task.teamLeadName || [] },
                 companyId: companyId,
             }).select("_id");
 
@@ -234,7 +237,7 @@ class NotificationService {
                 companyId,
                 type: "TASK_DUE_SOON",
                 title: "Task Due Soon ⏰",
-                message: `Reminder: Task "${task.projectTitle}" is due in 24 hours.`,
+                message: `Reminder: Task "${task.title}" is due in 24 hours.`,
                 data: { taskId },
                 priority: "high",
                 actionButton: {
@@ -244,7 +247,7 @@ class NotificationService {
             });
 
             console.log(
-                `📋 Due soon notification sent for: ${task.projectTitle}`
+                `📋 Due soon notification sent for: ${task.title}`
             );
         } catch (error) {
             console.error("  Error sending task due soon notification:", error);
