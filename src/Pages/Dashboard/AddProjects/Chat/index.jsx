@@ -30,6 +30,7 @@ import {
 import { toast } from 'react-toastify';
 import PropTypes from 'prop-types';
 
+
 const ProjectChat = ({ projectId }) => {
   const { user, theme, mode } = useAuth();
   const queryClient = useQueryClient();
