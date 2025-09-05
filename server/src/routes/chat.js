@@ -171,6 +171,7 @@ router.route('/rooms').post(async (req, res) => {
     }
 
     // Use the members array sent from frontend and ensure creator is included
+
     // Filter out any null/undefined values
     const validMembers = members.filter(memberId => memberId != null);
 
@@ -184,6 +185,7 @@ router.route('/rooms').post(async (req, res) => {
     const membersToCheck = validMembers.filter(id => id.toString() !== req.user._id.toString());
 
     // Fetch project roles for provided members to ensure they belong to the project and company
+
     const projectRoles = await ProjectRole.find({
       projectId,
       userId: { $in: validMembers },
@@ -266,6 +268,14 @@ router.route('/rooms').post(async (req, res) => {
       message: 'Failed to create chat room',
       error: error.message
     });
+
+    res.status(200).json({
+      success: true,
+      data: { name: room.name, description: room.description }
+    });
+  } catch (error) {
+    console.error('Update room error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update room', error: error.message });
   }
 });
 
