@@ -131,7 +131,6 @@ class NotificationService {
         try {
             // Get task details and notify the assigner
             const task = await mongoose
-                // userTask schema was renamed to Project
                 .model("Project")
                 .findById(taskId)
                 .populate("assignedBy", "_id name");

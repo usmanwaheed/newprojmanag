@@ -3,8 +3,8 @@ import express from 'express';
 import multer from 'multer';
 import ChatRoom from '../models/ChatRoom.js';
 import { ChatMessage, UserStatus } from '../models/ChatMessage.js';
-import { User } from '../models/userModel.js';
 import ProjectRole from '../models/projectRole.js';
+import { Project } from '../models/project.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { extractLinkPreview } from '../utils/linkPreview.js';
 import { verifyUser } from '../middleware/authMiddleware.js';
@@ -41,17 +41,33 @@ console.log('Chat routes loaded');
 router.route('/rooms/:projectId/users').get(async (req, res) => {
   try {
     const { projectId } = req.params;
+    const companyId = req.user.role === ROLES.COMPANY ? req.user._id : req.user.companyId;
+
+    // Ensure the project belongs to the requesting company
+    const project = await Project.findOne({ _id: projectId, companyId });
+    if (!project) {
+      return res.status(403).json({
+        success: false,
+        message: 'Project not found or access denied'
+      });
+    }
 
     const projectUsers = await ProjectRole.find({ projectId, isActive: true })
-      .populate('userId', 'name avatar email');
+      .populate('userId', 'name avatar email companyId');
 
-    const users = projectUsers.map(pr => ({
-      _id: pr.userId._id,
-      name: pr.userId.name,
-      avatar: pr.userId.avatar,
-      email: pr.userId.email,
-      role: pr.role
-    }));
+    const users = projectUsers
+      .filter(pr => {
+        if (!pr.userId) return false;
+        const userCompany = pr.userId.companyId ? pr.userId.companyId.toString() : pr.userId._id.toString();
+        return userCompany === companyId.toString();
+      })
+      .map(pr => ({
+        _id: pr.userId._id,
+        name: pr.userId.name,
+        avatar: pr.userId.avatar,
+        email: pr.userId.email,
+        role: pr.role
+      }));
 
     res.status(200).json({ success: true, data: users });
   } catch (error) {
@@ -66,9 +82,18 @@ router.route('/rooms/:projectId/users').get(async (req, res) => {
 
 // Get all chat rooms for a project
 router.route('/rooms/:projectId').get(async (req, res) => {
-  console.log('User IDddddddddddd:', req);
   try {
     const { projectId } = req.params;
+    const companyId = req.user.role === ROLES.COMPANY ? req.user._id : req.user.companyId;
+
+    // Verify project belongs to company
+    const project = await Project.findOne({ _id: projectId, companyId });
+    if (!project) {
+      return res.status(403).json({
+        success: false,
+        message: 'Project not found or access denied'
+      });
+    }
 
     const rooms = await ChatRoom.find({
       projectId,
@@ -133,7 +158,17 @@ router.route('/rooms').post(async (req, res) => {
       });
     }
 
-    // Use the members array sent from frontend and ensure creator is included
+    const companyId = req.user.role === ROLES.COMPANY ? req.user._id : req.user.companyId;
+
+    // Ensure project belongs to the requesting company
+    const project = await Project.findOne({ _id: projectId, companyId });
+    if (!project) {
+      return res.status(403).json({
+        success: false,
+        message: 'Project not found or access denied'
+      });
+    }
+
     // Filter out any null/undefined values
     const validMembers = members.filter(memberId => memberId != null);
 
@@ -143,15 +178,30 @@ router.route('/rooms').post(async (req, res) => {
 
     console.log("Valid members after filtering:", validMembers);
 
-    // Fetch project roles for provided members to ensure they belong to the project
     const projectRoles = await ProjectRole.find({
       projectId,
       userId: { $in: validMembers },
       isActive: true
-    }).populate('userId', 'name avatar role');
+    }).populate('userId', 'name avatar role companyId');
+
+    // Filter out users not in the same company
+    const filteredRoles = projectRoles.filter(pr => {
+      if (!pr.userId) return false;
+      const userCompany = pr.userId.companyId ? pr.userId.companyId.toString() : pr.userId._id.toString();
+      return userCompany === companyId.toString();
+    });
+
+    const memberIds = filteredRoles.map(pr => pr.userId._id.toString());
+
+    // All provided members must belong to the project and company
+    if (memberIds.length !== validMembers.length) {
+      return res.status(403).json({
+        success: false,
+        message: 'All members must belong to your company and be assigned to the project'
+      });
+    }
 
     // Ensure the creator is part of the project
-    const memberIds = projectRoles.map(pr => pr.userId._id.toString());
     if (!memberIds.includes(req.user._id.toString())) {
       return res.status(403).json({
         success: false,
@@ -160,7 +210,7 @@ router.route('/rooms').post(async (req, res) => {
     }
 
     // Ensure at least one QC admin is part of the room
-    const hasQcAdmin = projectRoles.some(pr => pr.role === ROLES.QCADMIN);
+    const hasQcAdmin = filteredRoles.some(pr => pr.role === ROLES.QCADMIN);
     if (!hasQcAdmin) {
       return res.status(400).json({
         success: false,
@@ -170,7 +220,8 @@ router.route('/rooms').post(async (req, res) => {
 
     const existingUserIds = [...new Set(memberIds)];
 
-    const adminIds = projectRoles
+    const adminIds = filteredRoles
+
       .filter(pr => pr.role === ROLES.QCADMIN)
       .map(pr => pr.userId._id.toString());
 
@@ -179,7 +230,7 @@ router.route('/rooms').post(async (req, res) => {
       description: description?.trim() || '',
       projectId,
       createdBy: req.user._id,
-      members: existingUserIds, // Use the members from frontend payload filtered by project membership
+      members: existingUserIds, // Use the members from frontend payload filtered by project/company membership
       admins: [...new Set([req.user._id.toString(), ...adminIds])],
       isPrivate
     });

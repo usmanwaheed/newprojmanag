@@ -42,7 +42,6 @@ const subUsertaskSchema = new mongoose.Schema(
         },
         projectId: {
             type: mongoose.Schema.Types.ObjectId,
-            // Reference the Project model instead of the old userTask
             ref: "Project",
             required: true,
         },

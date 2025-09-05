@@ -76,10 +76,6 @@ const notificationSchema = new mongoose.Schema(
         data: {
             taskId: {
                 type: mongoose.Schema.Types.ObjectId,
-                // The project model was previously named "userTask"
-                // and some references still pointed to the old name.
-                // Update the ref so Mongoose correctly populates
-                // project documents in notifications.
                 ref: "Project",
                 default: null,
             },

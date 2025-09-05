@@ -13,7 +13,6 @@ const videoSubtaskSchema = new mongoose.Schema(
         },
         projectId: {
             type: mongoose.Schema.Types.ObjectId,
-            // userTask model was renamed; update reference
             ref: "Project",
             required: true,
         },
