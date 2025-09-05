@@ -42,7 +42,6 @@ router.route('/rooms/:projectId/users').get(async (req, res) => {
   try {
     const { projectId } = req.params;
 
-
     const companyId = req.user.role === ROLES.COMPANY ? req.user._id : req.user.companyId;
 
     // Ensure the project belongs to the requesting company
@@ -217,7 +216,6 @@ router.route('/rooms').post(async (req, res) => {
     // Ensure the creator is included in member list
     if (!memberIds.includes(req.user._id.toString())) {
       memberIds.push(req.user._id.toString());
-
     }
 
     // Ensure at least one QC admin is part of the room
@@ -232,7 +230,6 @@ router.route('/rooms').post(async (req, res) => {
     const existingUserIds = [...new Set(memberIds)];
 
     const adminIds = filteredRoles
-
       .filter(pr => pr.role === ROLES.QCADMIN)
       .map(pr => pr.userId._id.toString());
 
@@ -266,11 +263,45 @@ router.route('/rooms').post(async (req, res) => {
     });
   } catch (error) {
     console.error('Create chat room error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to create chat room', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create chat room',
+      error: error.message
     });
+  }
+});
+
+// Update a chat room
+router.route('/rooms/:roomId').put(async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { name, description } = req.body;
+
+    const room = await ChatRoom.findById(roomId);
+    if (!room) return res.status(404).json({ success: false, message: 'Chat room not found' });
+
+    if (!room.members.some(memberId => memberId.equals(req.user._id))) {
+      return res.status(403).json({ success: false, message: 'Access denied to this chat room' });
+    }
+
+    if (name) room.name = name.trim();
+    if (description !== undefined) room.description = description.trim();
+
+    await room.save();
+
+    req.io?.to(`room_${roomId}`).emit('room_updated', {
+      roomId,
+      name: room.name,
+      description: room.description
+    });
+
+    res.status(200).json({
+      success: true,
+      data: { name: room.name, description: room.description }
+    });
+  } catch (error) {
+    console.error('Update room error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update room', error: error.message });
   }
 });
 

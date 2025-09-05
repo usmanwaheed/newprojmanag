@@ -5,7 +5,7 @@ import {
   Box, Stack, Typography, TextField, IconButton, Button,
   Avatar, Paper, Chip, Dialog, DialogTitle, DialogContent,
   DialogActions, List, ListItem, ListItemAvatar, ListItemText,
-  Badge, Tooltip, Divider, Menu, MenuItem, CircularProgress,
+  ListItemIcon, Badge, Tooltip, Divider, Menu, MenuItem, CircularProgress,
   Alert, InputAdornment, Checkbox
 } from '@mui/material';
 import {
@@ -17,19 +17,26 @@ import {
   Link as LinkIcon,
   Close as CloseIcon,
   Search as SearchIcon,
-  EmojiEmotions as EmojiIcon
+  EmojiEmotions as EmojiIcon,
+  Settings as SettingsIcon,
+  Group as GroupIcon,
+  ExitToApp as ExitToAppIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../../../context/AuthProvider';
 import { useSocket } from '../../../../hooks/useSocket';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createChatRoom, getChatRooms, sendMessage as apiSendMessage,
-  getMessages, uploadChatFile, joinChatRoom as apiJoinChatRoom,
-  getProjectUsers
+  createChatRoom,
+  getChatRooms,
+  sendMessage as apiSendMessage,
+  getMessages,
+  uploadChatFile,
+  getProjectUsers,
+  updateChatRoom,
+  leaveChatRoom as apiLeaveChatRoom
 } from '../../../../api/chat';
 import { toast } from 'react-toastify';
 import PropTypes from 'prop-types';
-
 
 const ProjectChat = ({ projectId }) => {
   const { user, theme, mode } = useAuth();
@@ -48,6 +55,10 @@ const ProjectChat = ({ projectId }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [viewMembersOpen, setViewMembersOpen] = useState(false);
+  const [roomSettingsOpen, setRoomSettingsOpen] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [roomSettingsData, setRoomSettingsData] = useState({ name: '', description: '' });
   
   // Socket connection
   const {
@@ -55,9 +66,10 @@ const ProjectChat = ({ projectId }) => {
     isConnected,
     onlineUsers,
     joinChatRoom,
-    leaveChatRoom,
+    leaveChatRoom: socketLeaveChatRoom,
     sendMessage: socketSendMessage,
-    sendTypingIndicator
+    sendTypingIndicator,
+    updateUserStatus
   } = useSocket(projectId);
 
   // Fetch chat rooms
@@ -81,6 +93,12 @@ const ProjectChat = ({ projectId }) => {
     queryFn: () => getProjectUsers(projectId),
     enabled: !!projectId
   });
+
+  useEffect(() => {
+    if (!isConnected) return;
+    updateUserStatus('online');
+    return () => updateUserStatus('offline');
+  }, [isConnected, updateUserStatus]);
 
   // Create room mutation
   const createRoomMutation = useMutation({
@@ -129,6 +147,34 @@ const ProjectChat = ({ projectId }) => {
       setSelectedFile(null);
     }
   });
+
+  const updateRoomMutation = useMutation({
+    mutationFn: ({ roomId, data }) => updateChatRoom(roomId, data),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(['chatRooms', projectId]);
+      setSelectedRoom(prev => ({ ...prev, ...res.data }));
+      setRoomSettingsOpen(false);
+      toast.success('Room updated');
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || 'Failed to update room');
+    }
+  });
+
+  const leaveRoomMutation = useMutation({
+    mutationFn: apiLeaveChatRoom,
+    onSuccess: () => {
+      socketLeaveChatRoom(selectedRoom._id);
+      setLeaveDialogOpen(false);
+      setSelectedRoom(null);
+      queryClient.invalidateQueries(['chatRooms', projectId]);
+      toast.success('Left the room');
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || 'Failed to leave room');
+    }
+  });
+
   // Separate project users by role
   const allProjectUsers = useMemo(
     () => projectUsers?.data?.filter(u => u._id !== user._id) || [],
@@ -142,6 +188,14 @@ const ProjectChat = ({ projectId }) => {
     () => allProjectUsers.filter(u => u.role !== 'qcadmin'),
     [allProjectUsers]
   );
+
+  const roomMembers = useMemo(() => {
+    if (!selectedRoom) return [];
+    const map = new Map((projectUsers?.data || []).map(u => [u._id, u]));
+    map.set(user._id, { _id: user._id, name: user.name, avatar: user.avatar, role: user.role });
+    return (selectedRoom.members || []).map(id => map.get(id)).filter(Boolean);
+  }, [selectedRoom, projectUsers?.data, user]);
+
 
   // Socket event listeners
   useEffect(() => {
@@ -208,6 +262,12 @@ const ProjectChat = ({ projectId }) => {
       setSelectedMembers([]);
     }
   }, [createRoomDialog, qcAdmins, user._id, user.role]);
+
+  useEffect(() => {
+    if (roomSettingsOpen && selectedRoom) {
+      setRoomSettingsData({ name: selectedRoom.name || '', description: selectedRoom.description || '' });
+    }
+  }, [roomSettingsOpen, selectedRoom]);
 
   // Handle send message
   const handleSendMessage = (messageData = null) => {
@@ -278,6 +338,18 @@ const ProjectChat = ({ projectId }) => {
     );
   };
 
+  const handleUpdateRoom = () => {
+    if (!roomSettingsData.name.trim()) {
+      toast.error('Room name is required');
+      return;
+    }
+    updateRoomMutation.mutate({ roomId: selectedRoom._id, data: roomSettingsData });
+  };
+
+  const handleLeaveRoom = () => {
+    leaveRoomMutation.mutate(selectedRoom._id);
+  };
+
   // Create new room
   const handleCreateRoom = () => {
     if (!newRoomData.name.trim()) {
@@ -309,7 +381,7 @@ const ProjectChat = ({ projectId }) => {
 
   // Get user status
   const getUserStatus = (userId) => {
-    return onlineUsers.find(u => u.userId === userId) ? 'online' : 'offline';
+    return onlineUsers.some(u => u.userId === userId?.toString()) ? 'online' : 'offline';
   };
 
   // Format message time
@@ -333,17 +405,19 @@ const ProjectChat = ({ projectId }) => {
 
   const styles = {
     container: {
-      height: '600px',
+      height: '70vh',
       backgroundColor: theme.palette.background.paper,
-      borderRadius: '8px',
+      borderRadius: 2,
+      boxShadow: theme.shadows[3],
       overflow: 'hidden',
       display: 'flex'
     },
     sidebar: {
-      width: '300px',
+      width: 300,
       borderRight: `1px solid ${theme.palette.divider}`,
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      backgroundColor: theme.palette.background.default
     },
     chatArea: {
       flex: 1,
@@ -353,11 +427,11 @@ const ProjectChat = ({ projectId }) => {
     messageArea: {
       flex: 1,
       overflow: 'auto',
-      padding: '16px',
+      padding: 2,
       backgroundColor: theme.palette.background.default
     },
     inputArea: {
-      padding: '16px',
+      p: 2,
       borderTop: `1px solid ${theme.palette.divider}`,
       backgroundColor: theme.palette.background.paper
     }
@@ -709,16 +783,81 @@ const ProjectChat = ({ projectId }) => {
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
       >
-        <MenuItem onClick={() => setAnchorEl(null)}>
+        <MenuItem onClick={() => { setRoomSettingsOpen(true); setAnchorEl(null); }}>
+          <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
           Room Settings
         </MenuItem>
-        <MenuItem onClick={() => setAnchorEl(null)}>
+        <MenuItem onClick={() => { setViewMembersOpen(true); setAnchorEl(null); }}>
+          <ListItemIcon><GroupIcon fontSize="small" /></ListItemIcon>
           View Members
         </MenuItem>
-        <MenuItem onClick={() => setAnchorEl(null)}>
+        <MenuItem onClick={() => { setLeaveDialogOpen(true); setAnchorEl(null); }}>
+          <ListItemIcon><ExitToAppIcon fontSize="small" /></ListItemIcon>
           Leave Room
         </MenuItem>
       </Menu>
+
+      {/* View Members Dialog */}
+      <Dialog open={viewMembersOpen} onClose={() => setViewMembersOpen(false)} fullWidth>
+        <DialogTitle>Room Members</DialogTitle>
+        <List>
+          {roomMembers.map(member => (
+            <ListItem key={member._id}>
+              <ListItemAvatar>
+                <Badge
+                  color={getUserStatus(member._id) === 'online' ? 'success' : 'default'}
+                  variant="dot"
+                  overlap="circular"
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                >
+                  <Avatar src={member.avatar} alt={member.name} />
+                </Badge>
+              </ListItemAvatar>
+              <ListItemText primary={member.name} secondary={member.role === 'qcadmin' ? 'QC Admin' : 'Member'} />
+            </ListItem>
+          ))}
+        </List>
+      </Dialog>
+
+      {/* Room Settings Dialog */}
+      <Dialog open={roomSettingsOpen} onClose={() => setRoomSettingsOpen(false)} fullWidth>
+        <DialogTitle>Room Settings</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Room Name"
+              value={roomSettingsData.name}
+              onChange={(e) => setRoomSettingsData({ ...roomSettingsData, name: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Description"
+              value={roomSettingsData.description}
+              onChange={(e) => setRoomSettingsData({ ...roomSettingsData, description: e.target.value })}
+              multiline
+              rows={3}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRoomSettingsOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleUpdateRoom} disabled={updateRoomMutation.isLoading}>
+            {updateRoomMutation.isLoading ? <CircularProgress size={20} /> : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Leave Room Confirmation */}
+      <Dialog open={leaveDialogOpen} onClose={() => setLeaveDialogOpen(false)}>
+        <DialogTitle>Leave this room?</DialogTitle>
+        <DialogActions>
+          <Button onClick={() => setLeaveDialogOpen(false)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleLeaveRoom} disabled={leaveRoomMutation.isLoading}>
+            {leaveRoomMutation.isLoading ? <CircularProgress size={20} /> : 'Leave'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
