@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 // src/Pages/Dashboard/AddProjects/Chat/index.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Box, Stack, Typography, TextField, IconButton, Button,
   Avatar, Paper, Chip, Dialog, DialogTitle, DialogContent,
@@ -130,9 +130,18 @@ const ProjectChat = ({ projectId }) => {
     }
   });
   // Separate project users by role
-  const allProjectUsers = projectUsers?.data?.filter(u => u._id !== user._id) || [];
-  const qcAdmins = allProjectUsers.filter(u => u.role === 'qcadmin');
-  const otherMembers = allProjectUsers.filter(u => u.role !== 'qcadmin');
+  const allProjectUsers = useMemo(
+    () => projectUsers?.data?.filter(u => u._id !== user._id) || [],
+    [projectUsers?.data, user._id]
+  );
+  const qcAdmins = useMemo(
+    () => allProjectUsers.filter(u => u.role === 'qcadmin'),
+    [allProjectUsers]
+  );
+  const otherMembers = useMemo(
+    () => allProjectUsers.filter(u => u.role !== 'qcadmin'),
+    [allProjectUsers]
+  );
 
   // Socket event listeners
   useEffect(() => {
@@ -198,7 +207,7 @@ const ProjectChat = ({ projectId }) => {
       setSelectedQcAdmins(initialAdmins);
       setSelectedMembers([]);
     }
-  }, [createRoomDialog, qcAdmins, user]);
+  }, [createRoomDialog, qcAdmins, user._id, user.role]);
 
   // Handle send message
   const handleSendMessage = (messageData = null) => {
