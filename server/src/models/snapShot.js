@@ -10,7 +10,8 @@ const ScreenshotSchema = new mongoose.Schema(
         },
         projectId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "userTask",
+            // Updated to the new Project model name
+            ref: "Project",
             required: true,
         },
         userInfo: {
