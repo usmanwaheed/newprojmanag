@@ -3,7 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { apiResponse } from '../utils/apiResponse.js';
 import { apiError } from '../utils/apiError.js';
 import ProjectRole from '../models/projectRole.js';
-import { adminTask } from '../models/adminTask.js';
+import { Project } from '../models/project.js';
 import { User } from '../models/userModel.js';
 import { ROLES } from '../config/roles.js';
 
@@ -16,7 +16,7 @@ const getUserCompanyId = (user) => {
 
 // Ensure project belongs to company
 const validateProjectCompany = async (projectId, companyId) => {
-  const project = await adminTask.findOne({ _id: projectId, companyId });
+  const project = await Project.findOne({ _id: projectId, companyId });
   if (!project) throw new apiError(403, 'Project not found or access denied');
   return project;
 };

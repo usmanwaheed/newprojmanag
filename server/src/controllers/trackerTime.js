@@ -2,7 +2,7 @@ import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { userTracker } from "../models/TrackerTime.js";
-import { adminTask } from "../models/adminTask.js";
+import { Project } from "../models/project.js";
 import { ROLES } from "../config/roles.js";
 import moment from "moment";
 import mongoose from "mongoose";
@@ -32,7 +32,7 @@ const validateProjectCompany = async (projectId, companyId) => {
         return cached.project;
     }
 
-    const project = await adminTask
+    const project = await Project
         .findOne({ _id: projectId, companyId }, "projectTitle")
         .lean();
     if (!project) {
