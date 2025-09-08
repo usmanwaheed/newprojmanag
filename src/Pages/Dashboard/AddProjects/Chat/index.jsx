@@ -73,14 +73,22 @@ const ProjectChat = ({ projectId }) => {
   } = useSocket(projectId);
 
   // Fetch chat rooms
-  const { data: chatRooms, isLoading: roomsLoading } = useQuery({
+  const {
+    data: chatRooms,
+    isLoading: roomsLoading,
+    error: roomsError
+  } = useQuery({
     queryKey: ['chatRooms', projectId],
     queryFn: () => getChatRooms(projectId),
     enabled: !!projectId
   });
 
   // Fetch messages for selected room
-  const { data: messages, isLoading: messagesLoading } = useQuery({
+  const {
+    data: messages,
+    isLoading: messagesLoading,
+    error: messagesError
+  } = useQuery({
     queryKey: ['messages', selectedRoom?._id],
     queryFn: () => getMessages(selectedRoom._id),
     enabled: !!selectedRoom?._id,
@@ -99,6 +107,19 @@ const ProjectChat = ({ projectId }) => {
     updateUserStatus('online');
     return () => updateUserStatus('offline');
   }, [isConnected, updateUserStatus]);
+
+  useEffect(() => {
+    if (roomsError) {
+      console.error('Get chat rooms error:', roomsError);
+    }
+  }, [roomsError]);
+
+  useEffect(() => {
+    if (messagesError) {
+      console.error('Get messages error:', messagesError);
+    }
+  }, [messagesError]);
+
 
   // Create room mutation
   const createRoomMutation = useMutation({
@@ -466,7 +487,7 @@ const ProjectChat = ({ projectId }) => {
             Online ({onlineUsers.length})
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-            {onlineUsers.map(onlineUser => (
+            {onlineUsers?.map(onlineUser => (
               <Tooltip key={onlineUser.userId} title={onlineUser.userName}>
                 <Badge
                   color="success"
@@ -492,6 +513,10 @@ const ProjectChat = ({ projectId }) => {
           {roomsLoading ? (
             <Box display="flex" justifyContent="center" p={3}>
               <CircularProgress size={24} />
+            </Box>
+          ) : roomsError ? (
+            <Box p={2}>
+              <Alert severity="error">Failed to load chat rooms</Alert>
             </Box>
           ) : (
             <List>
@@ -573,6 +598,10 @@ const ProjectChat = ({ projectId }) => {
                 <Box display="flex" justifyContent="center" p={3}>
                   <CircularProgress />
                 </Box>
+              ) : messagesError ? (
+                <Box p={2}>
+                  <Alert severity="error">Failed to load messages</Alert>
+                </Box>
               ) : (
                 <Stack spacing={1}>
                   {filteredMessages.map(message => (
@@ -584,7 +613,7 @@ const ProjectChat = ({ projectId }) => {
                       formatTime={formatMessageTime}
                     />
                   ))}
-                  
+
                   {/* Typing Indicator */}
                   {typingUsers.length > 0 && (
                     <Box>
@@ -593,7 +622,7 @@ const ProjectChat = ({ projectId }) => {
                       </Typography>
                     </Box>
                   )}
-                  
+
                   <div ref={messagesEndRef} />
                 </Stack>
               )}

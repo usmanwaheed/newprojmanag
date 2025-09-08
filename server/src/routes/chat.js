@@ -338,7 +338,8 @@ router.route('/rooms/:roomId').put(async (req, res) => {
       description: room.description
     });
 
-    res.status(200).json({
+    // Return updated fields so client state stays in sync
+    return res.status(200).json({
       success: true,
       data: { name: room.name, description: room.description }
     });
