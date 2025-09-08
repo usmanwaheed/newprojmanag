@@ -8,7 +8,7 @@ const chatMessageSchema = new mongoose.Schema({
   },
   senderId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'UserInfo',
     required: true
   },
   senderName: {
@@ -61,7 +61,7 @@ const chatMessageSchema = new mongoose.Schema({
   reactions: [{
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+        ref: 'UserInfo'
     },
     emoji: String,
     createdAt: {
@@ -72,7 +72,7 @@ const chatMessageSchema = new mongoose.Schema({
   readBy: [{
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      ref: 'UserInfo'
     },
     readAt: {
       type: Date,
@@ -100,7 +100,7 @@ export const ChatMessage = mongoose.model('ChatMessage', chatMessageSchema);
 const userStatusSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+      ref: 'UserInfo',
     required: true,
     unique: true
   },
