@@ -412,6 +412,41 @@ router.route('/rooms/:roomId').put(async (req, res) => {
   }
 });
 
+// Update a chat room
+router.route('/rooms/:roomId').put(async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { name, description } = req.body;
+
+    const room = await ChatRoom.findById(roomId);
+    if (!room) return res.status(404).json({ success: false, message: 'Chat room not found' });
+
+    if (!room.members.some(memberId => memberId.equals(req.user._id))) {
+      return res.status(403).json({ success: false, message: 'Access denied to this chat room' });
+    }
+
+    if (name) room.name = name.trim();
+    if (description !== undefined) room.description = description.trim();
+
+    await room.save();
+
+    req.io?.to(`room_${roomId}`).emit('room_updated', {
+      roomId,
+      name: room.name,
+      description: room.description
+    });
+
+    // Return updated fields so client state stays in sync
+    return res.status(200).json({
+      success: true,
+      data: { name: room.name, description: room.description }
+    });
+  } catch (error) {
+    console.error('Update room error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update room', error: error.message });
+  }
+});
+
 // Join a chat room
 router.route('/rooms/:roomId/join').post(async (req, res) => {
   try {

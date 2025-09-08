@@ -215,6 +215,13 @@ const ProjectChat = ({ projectId }) => {
     return (selectedRoom.members || []).map(id => map.get(id)).filter(Boolean);
   }, [selectedRoom, projectUsers?.data, user]);
 
+  const onlineMemberCount = useMemo(() => {
+    if (!selectedRoom) return 0;
+    const memberIds = (selectedRoom.members || []).map(id => id.toString());
+    return onlineUsers.filter(u => memberIds.includes(u.userId)).length;
+    // counts how many room members appear in onlineUsers
+  }, [selectedRoom, onlineUsers]);
+
   // Socket event listeners
   useEffect(() => {
     if (!socket) return;
@@ -296,13 +303,38 @@ const ProjectChat = ({ projectId }) => {
 
     if (!messageToSend.content && messageToSend.type === 'text') return;
 
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage = {
+      _id: tempId,
+      roomId: selectedRoom._id,
+      senderId: user._id,
+      senderName: user.name,
+      senderAvatar: user.avatar,
+      createdAt: new Date().toISOString(),
+      ...messageToSend
+    };
+
+    // Optimistically add message to cache
+    queryClient.setQueryData(['messages', selectedRoom._id], old => {
+      const prev = old?.data || [];
+      return { ...old, data: [...prev, optimisticMessage] };
+    });
+
     // Send via socket for real-time
     socketSendMessage(selectedRoom._id, messageToSend);
-    
+
     // Send via API for persistence
     sendMessageMutation.mutate({
       roomId: selectedRoom._id,
       message: messageToSend
+    }, {
+      onError: () => {
+        // Remove optimistic message on failure
+        queryClient.setQueryData(['messages', selectedRoom._id], old => {
+          const prev = old?.data || [];
+          return { ...old, data: prev.filter(m => m._id !== tempId) };
+        });
+      }
     });
 
     if (!messageData) {
@@ -566,7 +598,7 @@ const ProjectChat = ({ projectId }) => {
               <Stack>
                 <Typography variant="h6">{selectedRoom.name}</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {selectedRoom.members?.length} members
+                  {selectedRoom.members?.length} members, {onlineMemberCount} online
                 </Typography>
               </Stack>
               
@@ -890,8 +922,8 @@ const ProjectChat = ({ projectId }) => {
 
 // Message Bubble Component
 const MessageBubble = ({ message, isOwn, onlineStatus, formatTime }) => {
-  const { theme } = useAuth();
-  
+  const { theme, mode } = useAuth();
+
   const bubbleStyles = {
     alignSelf: isOwn ? 'flex-end' : 'flex-start',
     maxWidth: '70%',
@@ -899,8 +931,12 @@ const MessageBubble = ({ message, isOwn, onlineStatus, formatTime }) => {
   };
 
   const contentStyles = {
-    backgroundColor: isOwn ? theme.palette.primary.main : theme.palette.background.paper,
-    color: isOwn ? theme.palette.primary.contrastText : theme.palette.text.primary,
+    backgroundColor: isOwn
+      ? (mode === 'light' ? '#dcf8c6' : theme.palette.primary.dark)
+      : (mode === 'light' ? theme.palette.background.paper : theme.palette.grey[700]),
+    color: isOwn
+      ? (mode === 'light' ? theme.palette.text.primary : theme.palette.primary.contrastText)
+      : theme.palette.text.primary,
     padding: '8px 12px',
     borderRadius: isOwn ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
     boxShadow: theme.shadows[1]
