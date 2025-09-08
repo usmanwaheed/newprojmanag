@@ -42,7 +42,7 @@ const subUsertaskSchema = new mongoose.Schema(
         },
         projectId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "userTask",
+            ref: "Project",
             required: true,
         },
         // NEW: Company reference for security - inherited from parent project

@@ -1,6 +1,6 @@
 import { Recording } from "../models/recordingModel.js";
 import { User } from "../models/userModel.js";
-import { adminTask } from "../models/adminTask.js";
+import { Project } from "../models/project.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -46,7 +46,7 @@ const startRecordingSession = asyncHandler(async (req, res) => {
 
     // Validate associated task if provided
     if (associatedTask) {
-        const task = await adminTask.findOne({
+        const task = await Project.findOne({
             _id: associatedTask,
             companyId: companyId,
         });
