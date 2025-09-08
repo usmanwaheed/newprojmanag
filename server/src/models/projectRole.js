@@ -9,7 +9,7 @@ const projectRoleSchema = new mongoose.Schema({
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'UserInfo',
     required: true,
     index: true
   },

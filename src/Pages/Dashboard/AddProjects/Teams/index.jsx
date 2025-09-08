@@ -11,17 +11,17 @@ import {
   TableRow, TableHead,
   TableCell, TableBody,
   Button, TableContainer,
+  FormControl, Select,
 } from "@mui/material";
 
 
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-
-import { getUserForSubTask } from "../../../../api/userSubTask";
-import { usePromoteUser } from "../../../../hooks/useAuth";
+import { getProjectMembers, assignProjectRole } from "../../../../api/projectRoles";
+import { getCompanyUsers } from "../../../../api/authApi";
 import { useAuth } from "../../../../context/AuthProvider";
 import { usersTimeProject } from "../../../../api/userTracker";
 import { RouteNames } from "../../../../Constants/route";
@@ -34,35 +34,67 @@ export default function Teams() {
   const tableClassText = mode === 'light' ? 'lightTableText' : 'darkTableText';
 
   const { id: projectId } = useParams();
-  // const [_, setUserRole] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const queryClient = useQueryClient();
 
-
-  const handleMenuClick = (event, userId) => {
+  const handleMenuClick = (event, memberId) => {
     setAnchorEl(event.currentTarget);
-    // setUserRole(userId)
+    setSelectedMember(memberId);
   };
 
-
-  const { data: getUserInfo } = useQuery({
-    queryKey: ['assignedUsers', projectId],
-    queryFn: () => getUserForSubTask(projectId),
+  const { data: membersRes } = useQuery({
+    queryKey: ['projectMembers', projectId],
+    queryFn: () => getProjectMembers(projectId),
     enabled: !!projectId,
   });
-  const userData = getUserInfo?.data;
-  const QcAdmins = userData?.filter((user) => user.role === "QcAdmin") || [];
-  const Users = userData?.filter((user) => user.role === "user") || [];
-  // console.log("Users ok", Users)
+  const members = membersRes?.data || [];
+  const QcAdmins = members
+    .filter((m) => m.role === 'qcadmin')
+    .map((m) => ({ ...m.userId, id: m.userId._id, userId: m.userId.name, role: 'qcadmin' }));
+  const Users = members
+    .filter((m) => m.role === 'user')
+    .map((m) => ({ ...m.userId, id: m.userId._id, userId: m.userId.name, role: 'user' }));
 
-  const { mutate: promoteUser } = usePromoteUser();
-  const handlePromoteUser = (userId) => {
-    promoteUser({ userId });
+  const { data: companyUsersRes } = useQuery({
+    queryKey: ['companyUsers'],
+    queryFn: getCompanyUsers,
+    enabled: user?.role === 'company',
+  });
+  const companyUsers = companyUsersRes?.data || [];
+  const existingIds = new Set(members.map((m) => m.userId._id));
+  const availableUsers = companyUsers.filter((u) => !existingIds.has(u._id));
+  const [selectedUser, setSelectedUser] = useState('');
+  const [selectedRole, setSelectedRole] = useState('user');
+
+  const mutation = useMutation({
+    mutationFn: assignProjectRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['projectMembers', projectId]);
+      toast.success('Member updated', { position: 'top-center', autoClose: 2000, hideProgressBar: false, pauseOnHover: false });
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || 'Action failed', { position: 'top-center', autoClose: 2000, hideProgressBar: false, pauseOnHover: false });
+    }
+  });
+
+  const handleAddMember = () => {
+    if (!selectedUser) return;
+    mutation.mutate({ projectId, userId: selectedUser, role: selectedRole });
+    setSelectedUser('');
+    setSelectedRole('user');
+  };
+
+  const handleChangeRole = (role) => {
+    if (!selectedMember) return;
+    mutation.mutate({ projectId, userId: selectedMember, role });
     setAnchorEl(null);
-  }
+    setSelectedMember(null);
+  };
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setAnchorEl(null);
+    setSelectedMember(null);
   };
 
 
@@ -82,6 +114,25 @@ export default function Teams() {
     <Stack variant="div" gap={8} my={4}>
       {!isTeamPage && (
         <>
+          {user.role === 'company' && (
+            <Stack direction="row" spacing={2} mb={2}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <Select value={selectedUser} displayEmpty onChange={(e) => setSelectedUser(e.target.value)}>
+                  <MenuItem value="">Select User</MenuItem>
+                  {availableUsers.map((u) => (
+                    <MenuItem key={u._id} value={u._id}>{u.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <Select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
+                  <MenuItem value="user">User</MenuItem>
+                  <MenuItem value="qcadmin">QC Admin</MenuItem>
+                </Select>
+              </FormControl>
+              <Button variant="outlined" onClick={handleAddMember}>Add</Button>
+            </Stack>
+          )}
           <Box>
             <Typography variant="h6" mb={1} className={tableClassText}>
               Team: (QcAdmin)
@@ -91,24 +142,22 @@ export default function Teams() {
               <Grid container spacing={3} ml="1px">
                 {QcAdmins?.map((person, index) => (
                   <Stack key={index} className={`${style.boxDropDown}`} sx={{ alignItems: 'center' }}>
-
                     <Grid item className={style.gridBox}>
                       <Avatar alt={person.name} src={person.avatar} sx={{ width: 55, height: 55 }} />
                       <Typography variant="body2" align="center" sx={{ marginTop: 1, fontSize: '0.8rem', textAlign: 'center' }}>
                         {person.userId}
                       </Typography>
 
-                      {person.role === "QcAdmin" ? (
+                      {person.role === "qcadmin" ? (
                         <Typography className={style.QC}>QC</Typography>
                       ) : (
-                        <IconButton onClick={(event) => handleMenuClick(event, person)}
+                        <IconButton onClick={(event) => handleMenuClick(event, person.id)}
                           className={style.iconButton}>
                           <MoreVertIcon />
                         </IconButton>
                       )}
                     </Grid>
                   </Stack>
-
                 ))}
               </Grid>
             ) : (
@@ -142,7 +191,7 @@ export default function Teams() {
                       ) : null}
 
                       <IconButton
-                        onClick={(event) => handleMenuClick(event, person)}
+                        onClick={(event) => handleMenuClick(event, person.id)}
                         className={style.iconButton}>
                         <MoreVertIcon />
                       </IconButton>
@@ -158,17 +207,7 @@ export default function Teams() {
                         horizontal: 'right',
                       }} classes={{ paper: style.dropdown }}>
 
-                      <MenuItem onClick={() => handlePromoteUser(person.id,
-                        toast.success(`${person.userId} Successfully Promoted to QCAdmin`, {
-                          position: "top-center",
-                          autoClose: 2000,
-                          hideProgressBar: false,
-                          closeOnClick: true,
-                          pauseOnHover: false,
-                          draggable: true,
-                          progress: false,
-                        })
-                      )} className={style.boxMenuItem}>Promote to QC</MenuItem>
+                      <MenuItem onClick={() => handleChangeRole('qcadmin')} className={style.boxMenuItem}>Promote to QC</MenuItem>
                     </Menu>
                   </Stack>
 
