@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { User } from "../models/userModel.js";
-import { adminTask } from "../models/adminTask.js";
+import { Project } from "../models/project.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -24,7 +24,7 @@ const getUserCompanyId = (user) => {
 
 // Helper function to validate project belongs to company
 const validateProjectCompany = async (projectId, companyId) => {
-    const project = await adminTask.findOne({ _id: projectId, companyId });
+    const project = await Project.findOne({ _id: projectId, companyId });
     if (!project) {
         throw new apiError(403, "Project not found or access denied");
     }
