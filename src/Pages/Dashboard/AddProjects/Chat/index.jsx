@@ -246,9 +246,9 @@ const ProjectChat = ({ projectId }) => {
   useEffect(() => {
     if (selectedRoom && socket && isConnected) {
       joinChatRoom(selectedRoom._id);
-      return () => leaveChatRoom(selectedRoom._id);
+      return () => socketLeaveChatRoom(selectedRoom._id);
     }
-  }, [selectedRoom, socket, isConnected, joinChatRoom, leaveChatRoom]);
+  }, [selectedRoom, socket, isConnected, joinChatRoom, socketLeaveChatRoom]);
 
   // Initialize selected members when dialog opens
   useEffect(() => {

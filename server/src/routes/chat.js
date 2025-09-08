@@ -267,6 +267,7 @@ router.route('/rooms').post(async (req, res) => {
       success: false,
       message: 'Failed to create chat room',
       error: error.message
+
     });
 
     res.status(200).json({
