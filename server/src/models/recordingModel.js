@@ -94,7 +94,8 @@ const recordingSchema = new mongoose.Schema(
         // Task association (optional)
         associatedTask: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "userTask",
+            // The task model has been renamed to "Project"
+            ref: "Project",
             default: null,
         },
 

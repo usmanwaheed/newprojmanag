@@ -11,6 +11,12 @@ export const getChatRooms = async (projectId) => {
   return data;
 };
 
+// Fetch users associated with a project for room creation
+export const getProjectUsers = async (projectId) => {
+  const { data } = await axiosInstance.get(`/chat/rooms/${projectId}/users`);
+  return data;
+};
+
 export const updateChatRoom = async (roomId, data) => {
   const { data: res } = await axiosInstance.put(`/chat/rooms/${roomId}`, data);
   return res;
