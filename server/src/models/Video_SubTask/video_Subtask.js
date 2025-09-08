@@ -13,7 +13,7 @@ const videoSubtaskSchema = new mongoose.Schema(
         },
         projectId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "userTask",
+            ref: "Project",
             required: true,
         },
         companyId: {

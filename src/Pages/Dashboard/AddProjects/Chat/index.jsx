@@ -1,13 +1,12 @@
 /* eslint-disable no-unused-vars */
 // src/Pages/Dashboard/AddProjects/Chat/index.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Box, Stack, Typography, TextField, IconButton, Button,
   Avatar, Paper, Chip, Dialog, DialogTitle, DialogContent,
   DialogActions, List, ListItem, ListItemAvatar, ListItemText,
-  Badge, Tooltip, Divider, Menu, MenuItem, CircularProgress,
-  Alert, Fab, InputAdornment, FormControl, InputLabel, Select,
-  OutlinedInput, Checkbox, ListItemText as MuiListItemText
+  ListItemIcon, ListItemButton, Badge, Tooltip, Divider, Menu, MenuItem, CircularProgress,
+  Alert, InputAdornment, Checkbox
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -18,29 +17,26 @@ import {
   Link as LinkIcon,
   Close as CloseIcon,
   Search as SearchIcon,
-  EmojiEmotions as EmojiIcon
+  EmojiEmotions as EmojiIcon,
+  Settings as SettingsIcon,
+  Group as GroupIcon,
+  ExitToApp as ExitToAppIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../../../context/AuthProvider';
 import { useSocket } from '../../../../hooks/useSocket';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createChatRoom, getChatRooms, sendMessage as apiSendMessage,
-  getMessages, uploadChatFile, joinChatRoom as apiJoinChatRoom
+  createChatRoom,
+  getChatRooms,
+  sendMessage as apiSendMessage,
+  getMessages,
+  uploadChatFile,
+  getProjectUsers,
+  updateChatRoom,
+  leaveChatRoom as apiLeaveChatRoom
 } from '../../../../api/chat';
 import { toast } from 'react-toastify';
-import { getUserForSubTask } from '../../../../api/userSubTask';
 import PropTypes from 'prop-types';
-
-const ITEM_HEIGHT = 48;
-const ITEM_PADDING_TOP = 8;
-const MenuProps = {
-  PaperProps: {
-    style: {
-      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
-      width: 250,
-    },
-  },
-};
 
 const ProjectChat = ({ projectId }) => {
   const { user, theme, mode } = useAuth();
@@ -53,11 +49,16 @@ const ProjectChat = ({ projectId }) => {
   const [createRoomDialog, setCreateRoomDialog] = useState(false);
   const [newRoomData, setNewRoomData] = useState({ name: '', description: '', isPrivate: false });
   const [selectedQcAdmins, setSelectedQcAdmins] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [viewMembersOpen, setViewMembersOpen] = useState(false);
+  const [roomSettingsOpen, setRoomSettingsOpen] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [roomSettingsData, setRoomSettingsData] = useState({ name: '', description: '' });
   
   // Socket connection
   const {
@@ -65,9 +66,10 @@ const ProjectChat = ({ projectId }) => {
     isConnected,
     onlineUsers,
     joinChatRoom,
-    leaveChatRoom,
+    leaveChatRoom: socketLeaveChatRoom,
     sendMessage: socketSendMessage,
-    sendTypingIndicator
+    sendTypingIndicator,
+    updateUserStatus
   } = useSocket(projectId);
 
   // Fetch chat rooms
@@ -88,9 +90,15 @@ const ProjectChat = ({ projectId }) => {
   // Fetch project users for room creation
   const { data: projectUsers } = useQuery({
     queryKey: ['projectUsers', projectId],
-    queryFn: () => getUserForSubTask(projectId),
+    queryFn: () => getProjectUsers(projectId),
     enabled: !!projectId
   });
+
+  useEffect(() => {
+    if (!isConnected) return;
+    updateUserStatus('online');
+    return () => updateUserStatus('offline');
+  }, [isConnected, updateUserStatus]);
 
   // Create room mutation
   const createRoomMutation = useMutation({
@@ -100,6 +108,7 @@ const ProjectChat = ({ projectId }) => {
       setCreateRoomDialog(false);
       setNewRoomData({ name: '', description: '', isPrivate: false });
       setSelectedQcAdmins([]);
+      setSelectedMembers([]);
       setSelectedRoom(data.data);
       toast.success('Chat room created successfully!');
     },
@@ -138,8 +147,53 @@ const ProjectChat = ({ projectId }) => {
       setSelectedFile(null);
     }
   });
-  // Get QC Admins from project users
-  const qcAdmins = projectUsers?.data?.filter(user => user.role === 'qcadmin') || [];
+
+  const updateRoomMutation = useMutation({
+    mutationFn: ({ roomId, data }) => updateChatRoom(roomId, data),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries(['chatRooms', projectId]);
+      setSelectedRoom(prev => ({ ...prev, ...res.data }));
+      setRoomSettingsOpen(false);
+      toast.success('Room updated');
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || 'Failed to update room');
+    }
+  });
+
+  const leaveRoomMutation = useMutation({
+    mutationFn: apiLeaveChatRoom,
+    onSuccess: () => {
+      socketLeaveChatRoom(selectedRoom._id);
+      setLeaveDialogOpen(false);
+      setSelectedRoom(null);
+      queryClient.invalidateQueries(['chatRooms', projectId]);
+      toast.success('Left the room');
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || 'Failed to leave room');
+    }
+  });
+  // Separate project users by role
+  const allProjectUsers = useMemo(
+    () => projectUsers?.data?.filter(u => u._id !== user._id) || [],
+    [projectUsers?.data, user._id]
+  );
+  const qcAdmins = useMemo(
+    () => allProjectUsers.filter(u => u.role === 'qcadmin'),
+    [allProjectUsers]
+  );
+  const otherMembers = useMemo(
+    () => allProjectUsers.filter(u => u.role !== 'qcadmin'),
+    [allProjectUsers]
+  );
+
+  const roomMembers = useMemo(() => {
+    if (!selectedRoom) return [];
+    const map = new Map((projectUsers?.data || []).map(u => [u._id, u]));
+    map.set(user._id, { _id: user._id, name: user.name, avatar: user.avatar, role: user.role });
+    return (selectedRoom.members || []).map(id => map.get(id)).filter(Boolean);
+  }, [selectedRoom, projectUsers?.data, user]);
 
   // Socket event listeners
   useEffect(() => {
@@ -192,17 +246,26 @@ const ProjectChat = ({ projectId }) => {
   useEffect(() => {
     if (selectedRoom && socket && isConnected) {
       joinChatRoom(selectedRoom._id);
-      return () => leaveChatRoom(selectedRoom._id);
+      return () => socketLeaveChatRoom(selectedRoom._id);
     }
-  }, [selectedRoom, socket, isConnected, joinChatRoom, leaveChatRoom]);
+  }, [selectedRoom, socket, isConnected, joinChatRoom, socketLeaveChatRoom]);
 
-  // Initialize selected QC Admins when dialog opens
+  // Initialize selected members when dialog opens
   useEffect(() => {
     if (createRoomDialog) {
-      // Pre-select all QC Admins by default
-      setSelectedQcAdmins(qcAdmins.map(admin => admin._id));
+      const initialAdmins = user.role === 'qcadmin'
+        ? [user._id, ...qcAdmins.map(admin => admin._id)]
+        : qcAdmins.map(admin => admin._id);
+      setSelectedQcAdmins(initialAdmins);
+      setSelectedMembers([]);
     }
-  }, [createRoomDialog, qcAdmins]);
+  }, [createRoomDialog, qcAdmins, user._id, user.role]);
+
+  useEffect(() => {
+    if (roomSettingsOpen && selectedRoom) {
+      setRoomSettingsData({ name: selectedRoom.name || '', description: selectedRoom.description || '' });
+    }
+  }, [roomSettingsOpen, selectedRoom]);
 
   // Handle send message
   const handleSendMessage = (messageData = null) => {
@@ -259,10 +322,30 @@ const ProjectChat = ({ projectId }) => {
     uploadFileMutation.mutate({ file, roomId: selectedRoom._id });
   };
 
-  // Handle QC Admin selection change
-  const handleQcAdminChange = (event) => {
-    const value = event.target.value;
-    setSelectedQcAdmins(typeof value === 'string' ? value.split(',') : value);
+  // Toggle QC Admin selection
+  const toggleQcAdmin = (id) => {
+    setSelectedQcAdmins(prev =>
+      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle additional member selection
+  const toggleMember = (id) => {
+    setSelectedMembers(prev =>
+      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+    );
+  };
+
+  const handleUpdateRoom = () => {
+    if (!roomSettingsData.name.trim()) {
+      toast.error('Room name is required');
+      return;
+    }
+    updateRoomMutation.mutate({ roomId: selectedRoom._id, data: roomSettingsData });
+  };
+
+  const handleLeaveRoom = () => {
+    leaveRoomMutation.mutate(selectedRoom._id);
   };
 
   // Create new room
@@ -272,7 +355,7 @@ const ProjectChat = ({ projectId }) => {
       return;
     }
 
-    if (selectedQcAdmins.length === 0) {
+    if (selectedQcAdmins.length === 0 && user.role !== 'qcadmin') {
       toast.error('At least one QC Admin must be selected');
       return;
     }
@@ -280,7 +363,7 @@ const ProjectChat = ({ projectId }) => {
     const roomData = {
       ...newRoomData,
       projectId,
-      members: [user._id, ...selectedQcAdmins]
+      members: [...new Set([user._id, ...selectedQcAdmins, ...selectedMembers])]
     };
 
     createRoomMutation.mutate(roomData);
@@ -291,11 +374,12 @@ const ProjectChat = ({ projectId }) => {
     setCreateRoomDialog(false);
     setNewRoomData({ name: '', description: '', isPrivate: false });
     setSelectedQcAdmins([]);
+    setSelectedMembers([]);
   };
 
   // Get user status
   const getUserStatus = (userId) => {
-    return onlineUsers.find(u => u.userId === userId) ? 'online' : 'offline';
+    return onlineUsers.some(u => u.userId === userId?.toString()) ? 'online' : 'offline';
   };
 
   // Format message time
@@ -319,17 +403,19 @@ const ProjectChat = ({ projectId }) => {
 
   const styles = {
     container: {
-      height: '600px',
+      height: '70vh',
       backgroundColor: theme.palette.background.paper,
-      borderRadius: '8px',
+      borderRadius: 2,
+      boxShadow: theme.shadows[3],
       overflow: 'hidden',
       display: 'flex'
     },
     sidebar: {
-      width: '300px',
+      width: 300,
       borderRight: `1px solid ${theme.palette.divider}`,
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      backgroundColor: theme.palette.background.default
     },
     chatArea: {
       flex: 1,
@@ -339,11 +425,11 @@ const ProjectChat = ({ projectId }) => {
     messageArea: {
       flex: 1,
       overflow: 'auto',
-      padding: '16px',
+      padding: 2,
       backgroundColor: theme.palette.background.default
     },
     inputArea: {
-      padding: '16px',
+      p: 2,
       borderTop: `1px solid ${theme.palette.divider}`,
       backgroundColor: theme.palette.background.paper
     }
@@ -410,30 +496,30 @@ const ProjectChat = ({ projectId }) => {
           ) : (
             <List>
               {chatRooms?.data?.map(room => (
-                <ListItem
-                  key={room._id}
-                  button
-                  selected={selectedRoom?._id === room._id}
-                  onClick={() => setSelectedRoom(room)}
-                >
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                      {room.name.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={room.name}
-                    secondary={room.description}
-                    primaryTypographyProps={{ noWrap: true }}
-                    secondaryTypographyProps={{ noWrap: true }}
-                  />
-                  {room.unreadCount > 0 && (
-                    <Chip
-                      size="small"
-                      color="primary"
-                      label={room.unreadCount}
+                <ListItem key={room._id} disablePadding>
+                  <ListItemButton
+                    selected={selectedRoom?._id === room._id}
+                    onClick={() => setSelectedRoom(room)}
+                  >
+                    <ListItemAvatar>
+                      <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                        {room.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={room.name}
+                      secondary={room.description}
+                      primaryTypographyProps={{ noWrap: true }}
+                      secondaryTypographyProps={{ noWrap: true }}
                     />
-                  )}
+                    {room.unreadCount > 0 && (
+                      <Chip
+                        size="small"
+                        color="primary"
+                        label={room.unreadCount}
+                      />
+                    )}
+                  </ListItemButton>
                 </ListItem>
               ))}
             </List>
@@ -618,53 +704,45 @@ const ProjectChat = ({ projectId }) => {
               placeholder="Brief description of the room purpose"
             />
             
-            {/* QC Admin Selection Dropdown */}
-            <FormControl fullWidth>
-              <InputLabel id="qc-admin-select-label">Select QC Admins</InputLabel>
-              <Select
-                labelId="qc-admin-select-label"
-                id="qc-admin-select"
-                multiple
-                value={selectedQcAdmins}
-                onChange={handleQcAdminChange}
-                input={<OutlinedInput label="Select QC Admins" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((value) => {
-                      const admin = qcAdmins.find(admin => admin._id === value);
-                      return (
-                        <Chip 
-                          key={value} 
-                          label={admin?.name || 'Unknown Admin'} 
-                          size="small"
-                          avatar={<Avatar src={admin?.avatar} sx={{ width: 24, height: 24 }} />}
-                        />
-                      );
-                    })}
-                  </Box>
-                )}
-                MenuProps={MenuProps}
-              >
-                {qcAdmins.map((admin) => (
-                  <MenuItem key={admin._id} value={admin._id}>
-                    <Checkbox checked={selectedQcAdmins.indexOf(admin._id) > -1} />
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ width: '100%' }}>
-                      <Avatar 
-                        src={admin.avatar} 
-                        alt={admin.name}
-                        sx={{ width: 32, height: 32 }}
-                      />
-                      <Stack>
-                        <Typography variant="body2">{admin.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {admin.email}
-                        </Typography>
-                      </Stack>
-                    </Stack>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {/* QC Admin Selection */}
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>QC Admins</Typography>
+            <List dense>
+              {qcAdmins.map((admin) => (
+                <ListItem key={admin._id} disablePadding>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedQcAdmins.includes(admin._id)}
+                    onChange={() => toggleQcAdmin(admin._id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                  <ListItemAvatar>
+                    <Avatar src={admin.avatar} alt={admin.name} sx={{ width: 32, height: 32 }} />
+                  </ListItemAvatar>
+                  <ListItemText primary={admin.name} secondary={admin.email} />
+                </ListItem>
+              ))}
+            </List>
+
+            {/* Additional Members Selection */}
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>Add Members</Typography>
+            <List dense>
+              {otherMembers.map((member) => (
+                <ListItem key={member._id} disablePadding>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedMembers.includes(member._id)}
+                    onChange={() => toggleMember(member._id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                  <ListItemAvatar>
+                    <Avatar src={member.avatar} alt={member.name} sx={{ width: 32, height: 32 }} />
+                  </ListItemAvatar>
+                  <ListItemText primary={member.name} secondary={member.email} />
+                </ListItem>
+              ))}
+            </List>
 
             {qcAdmins.length === 0 && (
               <Alert severity="warning">
@@ -675,6 +753,12 @@ const ProjectChat = ({ projectId }) => {
             {selectedQcAdmins.length > 0 && (
               <Alert severity="info">
                 {selectedQcAdmins.length} QC Admin{selectedQcAdmins.length > 1 ? 's' : ''} selected for this room.
+              </Alert>
+            )}
+
+            {selectedMembers.length > 0 && (
+              <Alert severity="info">
+                {selectedMembers.length} additional member{selectedMembers.length > 1 ? 's' : ''} selected.
               </Alert>
             )}
           </Stack>
@@ -697,16 +781,81 @@ const ProjectChat = ({ projectId }) => {
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
       >
-        <MenuItem onClick={() => setAnchorEl(null)}>
+        <MenuItem onClick={() => { setRoomSettingsOpen(true); setAnchorEl(null); }}>
+          <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
           Room Settings
         </MenuItem>
-        <MenuItem onClick={() => setAnchorEl(null)}>
+        <MenuItem onClick={() => { setViewMembersOpen(true); setAnchorEl(null); }}>
+          <ListItemIcon><GroupIcon fontSize="small" /></ListItemIcon>
           View Members
         </MenuItem>
-        <MenuItem onClick={() => setAnchorEl(null)}>
+        <MenuItem onClick={() => { setLeaveDialogOpen(true); setAnchorEl(null); }}>
+          <ListItemIcon><ExitToAppIcon fontSize="small" /></ListItemIcon>
           Leave Room
         </MenuItem>
       </Menu>
+
+      {/* View Members Dialog */}
+      <Dialog open={viewMembersOpen} onClose={() => setViewMembersOpen(false)} fullWidth>
+        <DialogTitle>Room Members</DialogTitle>
+        <List>
+          {roomMembers.map(member => (
+            <ListItem key={member._id}>
+              <ListItemAvatar>
+                <Badge
+                  color={getUserStatus(member._id) === 'online' ? 'success' : 'default'}
+                  variant="dot"
+                  overlap="circular"
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                >
+                  <Avatar src={member.avatar} alt={member.name} />
+                </Badge>
+              </ListItemAvatar>
+              <ListItemText primary={member.name} secondary={member.role === 'qcadmin' ? 'QC Admin' : 'Member'} />
+            </ListItem>
+          ))}
+        </List>
+      </Dialog>
+
+      {/* Room Settings Dialog */}
+      <Dialog open={roomSettingsOpen} onClose={() => setRoomSettingsOpen(false)} fullWidth>
+        <DialogTitle>Room Settings</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Room Name"
+              value={roomSettingsData.name}
+              onChange={(e) => setRoomSettingsData({ ...roomSettingsData, name: e.target.value })}
+              fullWidth
+            />
+            <TextField
+              label="Description"
+              value={roomSettingsData.description}
+              onChange={(e) => setRoomSettingsData({ ...roomSettingsData, description: e.target.value })}
+              multiline
+              rows={3}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRoomSettingsOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleUpdateRoom} disabled={updateRoomMutation.isLoading}>
+            {updateRoomMutation.isLoading ? <CircularProgress size={20} /> : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Leave Room Confirmation */}
+      <Dialog open={leaveDialogOpen} onClose={() => setLeaveDialogOpen(false)}>
+        <DialogTitle>Leave this room?</DialogTitle>
+        <DialogActions>
+          <Button onClick={() => setLeaveDialogOpen(false)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleLeaveRoom} disabled={leaveRoomMutation.isLoading}>
+            {leaveRoomMutation.isLoading ? <CircularProgress size={20} /> : 'Leave'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
