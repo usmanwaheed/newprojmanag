@@ -120,6 +120,7 @@ const ProjectChat = ({ projectId }) => {
     }
   }, [messagesError]);
 
+
   // Create room mutation
   const createRoomMutation = useMutation({
     mutationFn: createChatRoom,
