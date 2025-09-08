@@ -222,6 +222,11 @@ const ProjectChat = ({ projectId }) => {
     // counts how many room members appear in onlineUsers
   }, [selectedRoom, onlineUsers]);
 
+  const getRoomOnlineCount = (room) => {
+    const memberIds = (room.members || []).map(id => id.toString());
+    return onlineUsers.filter(u => memberIds.includes(u.userId)).length;
+  };
+
   // Socket event listeners
   useEffect(() => {
     if (!socket) return;
@@ -551,33 +556,36 @@ const ProjectChat = ({ projectId }) => {
             </Box>
           ) : (
             <List>
-              {chatRooms?.data?.map(room => (
-                <ListItem key={room._id} disablePadding>
-                  <ListItemButton
-                    selected={selectedRoom?._id === room._id}
-                    onClick={() => setSelectedRoom(room)}
-                  >
-                    <ListItemAvatar>
-                      <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                        {room.name.charAt(0).toUpperCase()}
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={room.name}
-                      secondary={room.description}
-                      primaryTypographyProps={{ noWrap: true }}
-                      secondaryTypographyProps={{ noWrap: true }}
-                    />
-                    {room.unreadCount > 0 && (
-                      <Chip
-                        size="small"
-                        color="primary"
-                        label={room.unreadCount}
+              {chatRooms?.data?.map(room => {
+                const onlineCount = getRoomOnlineCount(room);
+                return (
+                  <ListItem key={room._id} disablePadding>
+                    <ListItemButton
+                      selected={selectedRoom?._id === room._id}
+                      onClick={() => setSelectedRoom(room)}
+                    >
+                      <ListItemAvatar>
+                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                          {room.name.charAt(0).toUpperCase()}
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={room.name}
+                        secondary={`${room.description || ''}${onlineCount ? ` • ${onlineCount} online` : ''}`.trim()}
+                        primaryTypographyProps={{ noWrap: true }}
+                        secondaryTypographyProps={{ noWrap: true }}
                       />
-                    )}
-                  </ListItemButton>
-                </ListItem>
-              ))}
+                      {room.unreadCount > 0 && (
+                        <Chip
+                          size="small"
+                          color="primary"
+                          label={room.unreadCount}
+                        />
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                );
+              })}
             </List>
           )}
         </Box>
@@ -933,7 +941,7 @@ const MessageBubble = ({ message, isOwn, onlineStatus, formatTime }) => {
   const contentStyles = {
     backgroundColor: isOwn
       ? (mode === 'light' ? '#dcf8c6' : theme.palette.primary.dark)
-      : (mode === 'light' ? theme.palette.background.paper : theme.palette.grey[700]),
+      : (mode === 'light' ? '#f1f0f0' : theme.palette.grey[700]),
     color: isOwn
       ? (mode === 'light' ? theme.palette.text.primary : theme.palette.primary.contrastText)
       : theme.palette.text.primary,
