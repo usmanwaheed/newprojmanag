@@ -77,9 +77,7 @@ export default function TopBar({ title }) {
                     <IconButton onClick={handleThemeToggle} color="inherit">
                         {mode === 'light' ? <DarkModeOutlinedIcon /> : <LightModeOutlinedIcon />}
                     </IconButton>
-                    <IconButton>
-                        <NotificationBell />
-                    </IconButton>
+                    <NotificationBell />
                     <IconButton color="inherit" onClick={() => navigate(`/${RouteNames.HOME}`)}>
                         <HomeOutlinedIcon />
                     </IconButton>

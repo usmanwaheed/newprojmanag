@@ -47,6 +47,7 @@ import userSubTask from "./routes/userSubTask.js";
 import videosPdfSubTask from "./routes/videos&PdfSubTask.js";
 import screenRecordingRoutes from "./routes/screenRecordingRoutes.js";
 import notificationRoute from "./routes/notificationRoute.js";
+import projectRoleRoute from "./routes/projectRoles.js";
 
 import PlanRoute from "./adminPanel/routes/planRoute.js";
 import SuperAdminAuth from "./adminPanel/routes/superAdminAuth.js";
@@ -60,6 +61,7 @@ app.use("/user", userTracker);
 app.use("/user", cloudinaryScreenCapture);
 app.use("/user", userSubTask);
 app.use("/user", videosPdfSubTask);
+app.use("/user/project-roles", projectRoleRoute);
 app.use("/company", screenRecordingRoutes);
 app.use("/notifications", notificationRoute);
 

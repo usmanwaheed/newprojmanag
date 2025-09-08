@@ -9,7 +9,8 @@ const TimeTrackingSchema = new Schema(
         },
         projectId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "userTask",
+            // Link to the main Project record
+            ref: "Project",
             required: true,
         },
         // NEW: Company reference for security - inherited from parent project
@@ -21,7 +22,8 @@ const TimeTrackingSchema = new Schema(
         // Optional: SubTask reference for more granular tracking
         subTaskId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "project",
+            // Reference a specific sub-task
+            ref: "subUserTask",
             default: null,
         },
         employee: {
@@ -192,7 +194,8 @@ TimeTrackingSchema.statics.getCompanyProjectStats = function (
         },
         {
             $lookup: {
-                from: "usertasks",
+                // Match against the projects collection
+                from: "projects",
                 localField: "_id",
                 foreignField: "_id",
                 as: "project",
@@ -202,7 +205,8 @@ TimeTrackingSchema.statics.getCompanyProjectStats = function (
         {
             $project: {
                 projectId: "$_id",
-                projectTitle: "$project.projectTitle",
+                // Use the new title field from the Project model
+                projectTitle: "$project.title",
                 totalTime: 1,
                 totalSessions: 1,
                 uniqueUsersCount: { $size: "$uniqueUsers" },
